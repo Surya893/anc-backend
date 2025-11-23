@@ -1,0 +1,70 @@
+{
+  "websocket_tcp_baseline": {
+    "scenario": "websocket_tcp_baseline",
+    "network_rtt_ms": "15-25 (30-50 on retransmit)",
+    "processing_ms": "15-25",
+    "protocol_overhead_ms": "5-10",
+    "packet_loss_rate": "2%",
+    "num_requests": 1000,
+    "latency_ms": {
+      "mean": 55.26941724100925,
+      "median": 53.922922499850756,
+      "stdev": 9.555469716813688,
+      "min": 40.90461099985987,
+      "max": 131.73084800018842,
+      "p50": 53.922922499850756,
+      "p95": 62.82969429996683,
+      "p99": 109.62320035013363
+    }
+  },
+  "edge_computing": {
+    "scenario": "edge_computing",
+    "network_rtt_ms": "2-5",
+    "processing_ms": "2-4",
+    "num_requests": 1000,
+    "latency_ms": {
+      "mean": 7.677414003009744,
+      "median": 7.583310499967411,
+      "stdev": 1.1582699955136666,
+      "min": 4.324389999965206,
+      "max": 11.167938999733451,
+      "p50": 7.583310499967411,
+      "p95": 9.713554550035042,
+      "p99": 9.846023150271321
+    }
+  },
+  "regional_lambda": {
+    "scenario": "regional_lambda",
+    "network_rtt_ms": "15-30",
+    "processing_ms": "10-20 (100-200 cold start)",
+    "cold_start_rate": "1%",
+    "num_requests": 1000,
+    "latency_ms": {
+      "mean": 40.36096939799836,
+      "median": 38.770644000123866,
+      "stdev": 16.39566372203597,
+      "min": 25.81348200010325,
+      "max": 220.59420699997645,
+      "p50": 38.770644000123866,
+      "p95": 48.418550799897275,
+      "p99": 145.92210164993048
+    }
+  },
+  "webrtc_udp": {
+    "scenario": "webrtc_udp",
+    "network_rtt_ms": "1-3",
+    "nlms_processing_ms": "1-2",
+    "opus_codec_ms": "1-2",
+    "num_requests": 1000,
+    "latency_ms": {
+      "mean": 6.784892708003099,
+      "median": 6.541363499763975,
+      "stdev": 0.7913444099257341,
+      "min": 4.280698000002303,
+      "max": 10.270063999996637,
+      "p50": 6.541363499763975,
+      "p95": 7.681615450201207,
+      "p99": 7.812026879928453
+    }
+  }
+}

@@ -1,0 +1,486 @@
+openapi: 3.0.3
+info:
+  title: ANC Platform API
+  description: |
+    Comprehensive REST API for Active Noise Cancellation Platform
+    
+    Features:
+    - Real-time noise cancellation control
+    - Advanced adaptive filtering algorithms (LMS, NLMS, RLS)
+    - Audio analysis and classification
+    - Emergency sound detection
+    - Multi-channel support
+    - Performance monitoring
+    
+  version: 1.0.0
+  contact:
+    name: ANC Platform Support
+    email: support@anc-platform.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.anc-platform.com/api/v1
+    description: Production
+  - url: https://staging-api.anc-platform.com/api/v1
+    description: Staging
+  - url: http://localhost:5000/api/v1
+    description: Development
+
+security:
+  - ApiKeyAuth: []
+  - BearerAuth: []
+
+tags:
+  - name: Authentication
+    description: API authentication and authorization
+  - name: ANC Control
+    description: Active noise cancellation control
+  - name: Audio Processing
+    description: Audio analysis and processing
+  - name: Models
+    description: ML model management
+  - name: Statistics
+    description: System statistics and analytics
+  - name: Health
+    description: System health and monitoring
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Check if API is healthy
+      tags: [Health]
+      security: []
+      responses:
+        '200':
+          description: System is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /ready:
+    get:
+      summary: Readiness check
+      description: Check if system is ready to process requests
+      tags: [Health]
+      security: []
+      responses:
+        '200':
+          description: System is ready
+        '503':
+          description: System not ready
+
+  /auth/token:
+    post:
+      summary: Get authentication token
+      description: Obtain JWT token for API access
+      tags: [Authentication]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRequest'
+      responses:
+        '200':
+          description: Token generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Invalid credentials
+
+  /anc/initialize:
+    post:
+      summary: Initialize ANC system
+      description: Initialize the noise cancellation system with configuration
+      tags: [ANC Control]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ANCInitRequest'
+      responses:
+        '200':
+          description: System initialized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ANCInitResponse'
+        '500':
+          description: Initialization failed
+
+  /anc/status:
+    get:
+      summary: Get ANC status
+      description: Get current status of ANC system
+      tags: [ANC Control]
+      responses:
+        '200':
+          description: Status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ANCStatusResponse'
+        '503':
+          description: System not initialized
+
+  /anc/enable:
+    post:
+      summary: Enable ANC
+      description: Enable active noise cancellation
+      tags: [ANC Control]
+      responses:
+        '200':
+          description: ANC enabled
+        '503':
+          description: System not initialized
+
+  /anc/disable:
+    post:
+      summary: Disable ANC
+      description: Disable active noise cancellation
+      tags: [ANC Control]
+      responses:
+        '200':
+          description: ANC disabled
+
+  /anc/intensity:
+    post:
+      summary: Set ANC intensity
+      description: Adjust noise cancellation intensity
+      tags: [ANC Control]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntensityRequest'
+      responses:
+        '200':
+          description: Intensity updated
+        '400':
+          description: Invalid intensity value
+
+  /audio/process:
+    post:
+      summary: Process audio
+      description: Process audio through ANC system
+      tags: [Audio Processing]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AudioProcessRequest'
+      responses:
+        '200':
+          description: Audio processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AudioProcessResponse'
+
+  /audio/analyze:
+    post:
+      summary: Analyze audio
+      description: Analyze audio and extract features
+      tags: [Audio Processing]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AudioAnalyzeRequest'
+      responses:
+        '200':
+          description: Analysis complete
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AudioAnalysisResponse'
+
+  /models:
+    get:
+      summary: List models
+      description: Get list of available ML models
+      tags: [Models]
+      responses:
+        '200':
+          description: Models list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelsListResponse'
+
+  /models/{modelId}/predict:
+    post:
+      summary: Make prediction
+      description: Make prediction using specific model
+      tags: [Models]
+      parameters:
+        - name: modelId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PredictionRequest'
+      responses:
+        '200':
+          description: Prediction complete
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PredictionResponse'
+
+  /stats/summary:
+    get:
+      summary: Get statistics
+      description: Get system statistics summary
+      tags: [Statistics]
+      responses:
+        '200':
+          description: Statistics retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatsSummaryResponse'
+
+  /stats/performance:
+    get:
+      summary: Get performance stats
+      description: Get algorithm performance metrics
+      tags: [Statistics]
+      responses:
+        '200':
+          description: Performance metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PerformanceResponse'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: healthy
+        timestamp:
+          type: string
+          format: date-time
+        version:
+          type: string
+          example: 1.0.0
+
+    TokenRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+
+    TokenResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        expires_in:
+          type: integer
+        token_type:
+          type: string
+
+    ANCInitRequest:
+      type: object
+      properties:
+        sample_rate:
+          type: integer
+          default: 44100
+        chunk_size:
+          type: integer
+          default: 1024
+        algorithm:
+          type: string
+          enum: [lms, nlms, rls]
+          default: nlms
+        filter_length:
+          type: integer
+          default: 512
+        use_adaptive_gain:
+          type: boolean
+          default: true
+
+    ANCInitResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        config:
+          type: object
+
+    ANCStatusResponse:
+      type: object
+      properties:
+        anc_enabled:
+          type: boolean
+        noise_intensity:
+          type: number
+        current_noise_class:
+          type: string
+        emergency_detected:
+          type: boolean
+        detection_confidence:
+          type: number
+        stats:
+          type: object
+        performance:
+          type: object
+
+    IntensityRequest:
+      type: object
+      required: [intensity]
+      properties:
+        intensity:
+          type: number
+          minimum: 0
+          maximum: 1
+
+    AudioProcessRequest:
+      type: object
+      required: [audio_data]
+      properties:
+        audio_data:
+          type: string
+          format: base64
+
+    AudioProcessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        metrics:
+          type: object
+          properties:
+            cancellation_db:
+              type: number
+            snr_improvement_db:
+              type: number
+            processing_time_ms:
+              type: number
+
+    AudioAnalyzeRequest:
+      type: object
+      required: [audio_data]
+      properties:
+        audio_data:
+          type: string
+          format: base64
+
+    AudioAnalysisResponse:
+      type: object
+      properties:
+        noise_class:
+          type: string
+        confidence:
+          type: number
+        intensity_db:
+          type: number
+        features:
+          type: object
+
+    ModelsListResponse:
+      type: object
+      properties:
+        models:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              type:
+                type: string
+              accuracy:
+                type: number
+              classes:
+                type: array
+                items:
+                  type: string
+
+    PredictionRequest:
+      type: object
+      required: [audio_data]
+      properties:
+        audio_data:
+          type: string
+          format: base64
+
+    PredictionResponse:
+      type: object
+      properties:
+        model_id:
+          type: string
+        prediction:
+          type: string
+        confidence:
+          type: number
+        probabilities:
+          type: object
+
+    StatsSummaryResponse:
+      type: object
+      properties:
+        total_detections:
+          type: integer
+        emergency_count:
+          type: integer
+        uptime_seconds:
+          type: integer
+        current_status:
+          type: object
+
+    PerformanceResponse:
+      type: object
+      properties:
+        avg_mse:
+          type: number
+        avg_snr_improvement_db:
+          type: number
+        avg_cancellation_db:
+          type: number
+        max_cancellation_db:
+          type: number
+        num_frames_processed:
+          type: integer
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string

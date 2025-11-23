@@ -1,0 +1,207 @@
+version: '3.8'
+
+services:
+  # ===================
+  # DATABASE LAYER
+  # ===================
+  postgres:
+    image: postgres:14-alpine
+    container_name: anc-database
+    environment:
+      POSTGRES_USER: anc_user
+      POSTGRES_PASSWORD: anc_password
+      POSTGRES_DB: anc_system
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    networks:
+      - anc-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U anc_user -d anc_system"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: anc-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - anc-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ===================
+  # BACKEND LAYER
+  # ===================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: anc-backend
+    environment:
+      # Flask
+      FLASK_ENV: ${FLASK_ENV:-development}
+      FLASK_DEBUG: ${FLASK_DEBUG:-True}
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key}
+
+      # Database
+      DATABASE_URL: postgresql://anc_user:anc_password@postgres:5432/anc_system
+
+      # Redis
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+
+      # CORS
+      CORS_ORIGINS: http://localhost:3000,http://localhost:80
+
+      # ANC Settings
+      ANC_FILTER_TAPS: 512
+      ANC_SAMPLE_RATE: 48000
+      ANC_BLOCK_SIZE: 1024
+
+      # ML Settings
+      ML_MODEL_PATH: /models/noise_classifier_sklearn.pkl
+
+      # AWS (optional)
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend:/app
+      - ./models:/models
+      - ./src/core:/app/core  # Link to core ANC algorithms
+      - ./src/ml:/app/ml      # Link to ML modules
+      - backend-logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - anc-network
+    restart: unless-stopped
+
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: anc-celery-worker
+    command: celery -A server.celery worker --loglevel=info
+    environment:
+      DATABASE_URL: postgresql://anc_user:anc_password@postgres:5432/anc_system
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    volumes:
+      - ./backend:/app
+      - ./models:/models
+      - ./src/core:/app/core
+      - ./src/ml:/app/ml
+    depends_on:
+      - postgres
+      - redis
+      - backend
+    networks:
+      - anc-network
+    restart: unless-stopped
+
+  # ===================
+  # FRONTEND LAYER
+  # ===================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: anc-frontend
+    environment:
+      REACT_APP_API_URL: http://localhost:5000
+      REACT_APP_WS_URL: ws://localhost:5000
+      REACT_APP_ENV: ${FLASK_ENV:-development}
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+    depends_on:
+      - backend
+    networks:
+      - anc-network
+    restart: unless-stopped
+
+  # ===================
+  # REVERSE PROXY (Links all layers)
+  # ===================
+  nginx:
+    image: nginx:alpine
+    container_name: anc-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./config/nginx/nginx.layered.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - anc-network
+    restart: unless-stopped
+
+  # ===================
+  # MONITORING
+  # ===================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: anc-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - anc-network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: anc-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana-dashboards:/etc/grafana/provisioning/dashboards:ro
+    networks:
+      - anc-network
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  redis-data:
+  backend-logs:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  anc-network:
+    driver: bridge

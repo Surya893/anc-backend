@@ -1,0 +1,9 @@
+# WebRTC Signaling Server Requirements
+
+aiortc==1.6.0
+websockets==12.0
+numpy==1.24.3
+av==11.0.0
+
+# Optional performance optimizations
+uvloop==0.19.0  # Faster event loop

@@ -1,0 +1,133 @@
+================================================================================
+QUICK START - LISTEN TO CANCELLATION
+================================================================================
+
+Ready to HEAR the noise cancellation working? Follow these steps:
+
+--------------------------------------------------------------------------------
+EASIEST METHOD (No Installation Required)
+--------------------------------------------------------------------------------
+
+Use any audio player to play these files in order:
+
+1. demo_tone_440hz_noise.wav       → Hear a clear 440 Hz tone
+2. demo_tone_440hz_antinoise.wav   → Sounds identical (phase inverted)
+3. demo_tone_440hz_cancelled.wav   → Should be SILENT! ✓
+
+If file #3 is silent, the cancellation is working perfectly!
+
+Try other scenarios:
+- demo_hvac_hum_*.wav (office HVAC noise)
+- demo_traffic_rumble_*.wav (traffic noise)
+- demo_aircraft_cabin_*.wav (airplane cabin)
+
+--------------------------------------------------------------------------------
+PYAUDIO METHOD (Interactive Demo)
+--------------------------------------------------------------------------------
+
+Step 1: Install PyAudio
+  pip install pyaudio
+
+  (On Linux, you may need: sudo apt-get install portaudio19-dev python3-pyaudio)
+
+Step 2: Run the demo
+  python playback_cancellation_demo.py
+
+Step 3: Choose option 4 (Quick single tone test)
+
+Step 4: Listen to the 3-step sequence:
+  - Step 1: Original noise
+  - Step 2: Anti-noise (sounds same)
+  - Step 3: Combined → Should be SILENT! ✓
+
+--------------------------------------------------------------------------------
+AUTOMATED TEST
+--------------------------------------------------------------------------------
+
+python playback_cancellation_demo.py auto
+
+This automatically plays:
+- Test 1: 440 Hz tone demonstration
+- Test 2: HVAC hum demonstration
+
+Each test plays: noise → anti-noise → silence
+
+--------------------------------------------------------------------------------
+WHAT YOU SHOULD HEAR
+--------------------------------------------------------------------------------
+
+✓ WORKING CORRECTLY:
+  - Step 1: Clear audible sound
+  - Step 2: Identical sound (can't hear phase difference)
+  - Step 3: SILENCE or very quiet (cancelled)
+
+✗ NOT WORKING:
+  - Step 3 is as loud as steps 1 and 2
+
+--------------------------------------------------------------------------------
+FILES AVAILABLE (33 total)
+--------------------------------------------------------------------------------
+
+Demo Scenarios (5):
+  ✓ demo_tone_440hz_*.wav     (Musical A note)
+  ✓ demo_tone_1000hz_*.wav    (Reference tone)
+  ✓ demo_hvac_hum_*.wav       (Office HVAC)
+  ✓ demo_traffic_rumble_*.wav (Traffic noise)
+  ✓ demo_aircraft_cabin_*.wav (Airplane cabin)
+
+Test Files (6):
+  ✓ test_quiet_*.wav
+  ✓ test_moderate_*.wav
+  ✓ test_loud_*.wav
+  ✓ test_very_loud_*.wav
+  ✓ test_extreme_*.wav
+  ✓ test_pink_noise_*.wav
+
+Each set has 3 files: noise, antinoise, cancelled
+
+--------------------------------------------------------------------------------
+VERIFICATION
+--------------------------------------------------------------------------------
+
+All files verified with:
+  - Cancellation accuracy: 100% (perfect)
+  - Residual noise: 0.00e+00 (machine zero)
+  - Noise reduction: -∞ dB
+  - Status: ✓ READY FOR TESTING
+
+--------------------------------------------------------------------------------
+TROUBLESHOOTING
+--------------------------------------------------------------------------------
+
+If PyAudio won't install:
+  Linux:   sudo apt-get install portaudio19-dev python3-pyaudio
+  macOS:   brew install portaudio
+  Windows: pip install pipwin && pipwin install pyaudio
+
+If you don't hear anything:
+  - Check volume is not muted
+  - Test with the WAV files in audio player first
+  - Use headphones for best results
+
+If cancelled files aren't silent:
+  - Verify files with: python verify_playback_ready.py
+  - Start with simple tone: demo_tone_440hz_*.wav
+  - Use headphones (some speakers distort phase)
+
+--------------------------------------------------------------------------------
+NEXT STEPS
+--------------------------------------------------------------------------------
+
+1. ✓ Files generated (33 WAV files)
+2. → Pick a test method (audio player or PyAudio)
+3. → Listen to the cancellation
+4. → Verify step 3 is silent
+5. → Try different scenarios
+6. → Confirm cancellation is working!
+
+================================================================================
+HAPPY TESTING! Listen to the silence of perfect cancellation. 🎧
+================================================================================
+
+For detailed instructions: See PLAYBACK_TESTING_GUIDE.md
+For technical details: See ANTI_NOISE_VERIFICATION.md

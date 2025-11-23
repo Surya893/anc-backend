@@ -1,0 +1,48 @@
+groups:
+  - name: anc_system_alerts
+    interval: 30s
+    rules:
+      - alert: ANCSystemDown
+        expr: up{job="anc-system"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "ANC system is down"
+          description: "ANC system has been down for more than 5 minutes"
+
+      - alert: HighErrorRate
+        expr: rate(anc_requests_total{status="error"}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value }} per second"
+
+      - alert: HighCPUUsage
+        expr: rate(process_cpu_seconds_total{job="anc-system"}[5m]) > 0.8
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is above 80% for 10 minutes"
+
+      - alert: HighMemoryUsage
+        expr: process_resident_memory_bytes{job="anc-system"} > 1.5e9
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is above 1.5GB"
+
+      - alert: EmergencyDetectionRate
+        expr: rate(anc_emergencies_total[5m]) > 0.5
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High emergency detection rate"
+          description: "Multiple emergencies detected"

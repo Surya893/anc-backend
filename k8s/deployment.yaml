@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: anc-system
+  namespace: anc-platform
+  labels:
+    app: anc-system
+    version: v1
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: anc-system
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: anc-system
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "5000"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: anc-system
+      containers:
+      - name: anc-api
+        image: anc-system:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 5000
+          protocol: TCP
+        env:
+        - name: FLASK_ENV
+          value: "production"
+        - name: DATABASE_PATH
+          value: "/data/anc_system.db"
+        - name: MODEL_PATH
+          value: "/models/noise_classifier_sklearn.joblib"
+        - name: LOG_LEVEL
+          value: "INFO"
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 5000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        - name: models
+          mountPath: /models
+        - name: logs
+          mountPath: /app/logs
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: anc-data-pvc
+      - name: models
+        persistentVolumeClaim:
+          claimName: anc-models-pvc
+      - name: logs
+        emptyDir: {}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - anc-system
+              topologyKey: kubernetes.io/hostname

@@ -1,0 +1,72 @@
+[flake8]
+# Flake8 configuration for reorganized repository structure
+
+# Exclude directories that shouldn't be linted
+exclude =
+    .git,
+    __pycache__,
+    .venv,
+    venv,
+    env,
+    .env,
+    dist,
+    build,
+    *.egg-info,
+    .eggs,
+    node_modules,
+    .pytest_cache,
+    .mypy_cache,
+    htmlcov,
+    # Data and model directories
+    data,
+    models,
+    # Infrastructure directories (contain configs, not Python code to lint)
+    cloud/terraform,
+    cloud/lambda,
+    cloud/lambda_edge,
+    k8s,
+    deploy,
+    monitoring,
+    firmware,
+    # Frontend/static files
+    static,
+    templates,
+    # Benchmarks (may have different style)
+    benchmarks,
+    # Tools (hardware-specific)
+    tools
+
+# Maximum line length
+max-line-length = 127
+
+# Maximum complexity
+max-complexity = 15
+
+# Ignore specific error codes
+ignore =
+    # E203: whitespace before ':' (conflicts with black)
+    E203,
+    # W503: line break before binary operator (conflicts with black)
+    W503,
+    # E501: line too long (we set max-line-length above)
+    # E501,
+    # F401: module imported but unused (common in __init__.py)
+    # F401,
+
+# Per-file ignores
+per-file-ignores =
+    # __init__.py files can have unused imports
+    __init__.py:F401,F403
+    # Test files can have unused imports and long lines
+    tests/*:F401,E501
+    # Scripts can be more lenient
+    scripts/*:E501
+
+# Show source code for errors
+show-source = True
+
+# Show statistics
+statistics = True
+
+# Count errors
+count = True

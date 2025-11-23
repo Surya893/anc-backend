@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>ANC System Control</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <h1>🎧 Active Noise Cancellation</h1>
+        <div class="status-badge" id="system-status">
+            <span class="status-dot"></span>
+            <span class="status-text">System Ready</span>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="container">
+
+        <!-- ANC Control Card -->
+        <div class="card">
+            <div class="card-header">
+                <h2>ANC Control</h2>
+            </div>
+            <div class="card-body">
+                <div class="anc-toggle">
+                    <button id="anc-toggle-btn" class="btn btn-large btn-primary" onclick="toggleANC()">
+                        <span id="anc-status-text">Enable ANC</span>
+                    </button>
+                </div>
+                <div class="anc-status-indicator" id="anc-indicator">
+                    <div class="indicator-light"></div>
+                    <span id="anc-state-text">ANC Disabled</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Noise Intensity Control -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Noise Intensity</h2>
+                <span class="badge" id="intensity-value">50%</span>
+            </div>
+            <div class="card-body">
+                <input type="range" id="intensity-slider"
+                       class="slider"
+                       min="0" max="100" value="50"
+                       oninput="updateIntensity(this.value)">
+                <div class="slider-labels">
+                    <span>Low</span>
+                    <span>Medium</span>
+                    <span>High</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Current Detection -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Current Detection</h2>
+                <span class="badge badge-info" id="confidence-badge">0%</span>
+            </div>
+            <div class="card-body">
+                <div class="detection-display">
+                    <div class="detection-icon" id="detection-icon">
+                        <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M12 2v20M17 7l-5 5-5-5M17 17l-5-5-5 5"/>
+                        </svg>
+                    </div>
+                    <div class="detection-info">
+                        <div class="detection-class" id="noise-class">Unknown</div>
+                        <div class="detection-confidence" id="confidence-text">Confidence: 0%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Prolonged Detection Settings -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Prolonged Detection</h2>
+                <label class="switch">
+                    <input type="checkbox" id="prolonged-toggle" checked onchange="toggleProlonged()">
+                    <span class="switch-slider"></span>
+                </label>
+            </div>
+            <div class="card-body">
+                <div class="setting-row">
+                    <label for="threshold-slider">Alert After (seconds):</label>
+                    <span class="badge" id="threshold-value">5s</span>
+                </div>
+                <input type="range" id="threshold-slider"
+                       class="slider"
+                       min="1" max="60" value="5"
+                       oninput="updateThreshold(this.value)">
+                <div class="prolonged-status" id="prolonged-status">
+                    <div class="status-item">
+                        <span class="label">Current Duration:</span>
+                        <span class="value" id="prolonged-duration">0s</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="label">Detected Class:</span>
+                        <span class="value" id="prolonged-class">None</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Emergency Notifications -->
+        <div class="card card-alert" id="emergency-card" style="display: none;">
+            <div class="card-header emergency-header">
+                <h2>🚨 Emergency Alert</h2>
+                <button class="btn-icon" onclick="dismissEmergency()">✕</button>
+            </div>
+            <div class="card-body">
+                <div class="emergency-message" id="emergency-message">
+                    Emergency sound detected!
+                </div>
+                <div class="emergency-actions">
+                    <button class="btn btn-danger btn-small" onclick="acknowledgeEmergency()">
+                        Acknowledge
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notifications -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Notifications</h2>
+                <button class="btn-icon" onclick="clearNotifications()">Clear All</button>
+            </div>
+            <div class="card-body">
+                <div class="notifications-container" id="notifications">
+                    <div class="notification-empty">No notifications</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Statistics</h2>
+                <button class="btn-icon" onclick="resetStats()">Reset</button>
+            </div>
+            <div class="card-body">
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value" id="stat-detections">0</div>
+                        <div class="stat-label">Total Detections</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="stat-emergency">0</div>
+                        <div class="stat-label">Emergency Count</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="stat-uptime">0h 0m</div>
+                        <div class="stat-label">Active Time</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Controls (Development) -->
+        <div class="card card-debug">
+            <div class="card-header">
+                <h2>Test Controls</h2>
+            </div>
+            <div class="card-body">
+                <div class="test-buttons">
+                    <button class="btn btn-secondary btn-small" onclick="simulateNoise('office', false)">
+                        Simulate Office
+                    </button>
+                    <button class="btn btn-secondary btn-small" onclick="simulateNoise('traffic', false)">
+                        Simulate Traffic
+                    </button>
+                    <button class="btn btn-warning btn-small" onclick="simulateNoise('alarm', true)">
+                        Simulate Alarm
+                    </button>
+                    <button class="btn btn-danger btn-small" onclick="simulateNoise('siren', true)">
+                        Simulate Siren
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
