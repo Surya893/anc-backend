@@ -1,0 +1,32 @@
+# Include documentation
+include README.md
+include LICENSE
+include CHANGELOG.md
+include requirements.txt
+
+# Include configuration files
+include *.yml
+include *.yaml
+include *.toml
+
+# Include source code
+recursive-include src *.py
+
+# Include ML models (if present)
+recursive-include models *.pkl *.joblib *.h5
+
+# Include templates and static files
+recursive-include templates *.html *.css *.js
+recursive-include static *.css *.js *.png *.jpg *.svg
+
+# Exclude unwanted files
+global-exclude __pycache__
+global-exclude *.py[co]
+global-exclude .DS_Store
+global-exclude *.swp
+global-exclude *~
+
+# Exclude tests
+prune tests
+prune .github
+prune docs/_build

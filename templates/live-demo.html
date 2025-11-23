@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ANC Platform - Live Demo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Socket.IO Client -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        /* [Previous premium styles - keeping all the beautiful CSS from demo-premium.html] */
+        :root {
+            --primary: #0071e3;
+            --primary-dark: #0077ED;
+            --success: #30d158;
+            --warning: #ff9f0a;
+            --danger: #ff3b30;
+            --bg-dark: #000000;
+            --text-primary: #f5f5f7;
+            --text-secondary: #a1a1a6;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .bg-gradient {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, #000000 0%, #1a1a2e 50%, #16213e 100%);
+            z-index: -2;
+        }
+
+        .bg-gradient::before {
+            content: '';
+            position: absolute;
+            inset: -50%;
+            background: radial-gradient(circle, rgba(0, 113, 227, 0.1) 0%, transparent 70%);
+            animation: rotate 20s linear infinite;
+        }
+
+        @keyframes rotate {
+            to { transform: rotate(360deg); }
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 80px 20px 40px;
+        }
+
+        .hero h1 {
+            font-size: clamp(48px, 8vw, 84px);
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            background: linear-gradient(135deg, #ffffff 0%, #a1a1a6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 16px;
+            line-height: 1.1;
+        }
+
+        .hero .tagline {
+            font-size: clamp(18px, 3vw, 28px);
+            font-weight: 300;
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+        }
+
+        .connection-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 20px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--danger);
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: var(--success);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(40px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 32px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow-lg);
+            transition: all 0.3s;
+        }
+
+        .glass-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .card-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 24px;
+        }
+
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+        }
+
+        .anc-button {
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            border: none;
+            cursor: pointer;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 600;
+            color: white;
+            transition: all 0.4s;
+            box-shadow: 0 20px 60px rgba(0, 113, 227, 0.3);
+        }
+
+        .anc-button:hover {
+            transform: scale(1.05);
+        }
+
+        .anc-button.active {
+            background: linear-gradient(135deg, var(--success) 0%, #28a745 100%);
+            animation: pulse-glow 2s infinite;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 20px 60px rgba(48, 209, 88, 0.4); }
+            50% { box-shadow: 0 20px 70px rgba(48, 209, 88, 0.6); }
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+        }
+
+        .stat-card {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--success) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .noise-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px;
+        }
+
+        .noise-button {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 16px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .noise-button:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .noise-button.active {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .noise-button .icon {
+            font-size: 28px;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+            margin: 16px 0;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .slider-value {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .waveform-container {
+            height: 150px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 16px;
+            border: 1px solid var(--glass-border);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .waveform-canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 32px;
+            right: 32px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(40px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: var(--shadow-lg);
+            transform: translateY(120%);
+            transition: transform 0.4s;
+            z-index: 1000;
+            max-width: 400px;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 768px) {
+            .control-grid {
+                grid-template-columns: 1fr;
+            }
+            .anc-button {
+                width: 140px;
+                height: 140px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-gradient"></div>
+
+    <div class="container">
+        <!-- Hero -->
+        <div class="hero">
+            <h1>ANC Platform</h1>
+            <div class="tagline">Real-time Noise Cancellation • Live Demo</div>
+            <div class="connection-status">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Connecting to server...</span>
+            </div>
+        </div>
+
+        <!-- Main Controls -->
+        <div class="control-grid">
+            <!-- ANC Control -->
+            <div class="glass-card" style="text-align: center;">
+                <div class="card-title">ANC Control</div>
+                <button class="anc-button" id="ancButton" onclick="toggleANC()">
+                    <span id="ancText">Enable ANC</span>
+                </button>
+                <div style="margin-top: 20px; font-size: 14px; color: var(--text-secondary);" id="ancStatus">
+                    Ready to activate
+                </div>
+            </div>
+
+            <!-- Live Stats -->
+            <div class="glass-card">
+                <div class="card-title">Live Metrics</div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="cancellationDB">0</div>
+                        <div class="stat-label">dB Reduction</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="latencyMS">0</div>
+                        <div class="stat-label">Latency (ms)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">95.8%</div>
+                        <div class="stat-label">Accuracy</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="chunksProcessed">0</div>
+                        <div class="stat-label">Processed</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Audio Processing -->
+        <div class="glass-card">
+            <div class="card-title">Audio Processing</div>
+
+            <!-- Waveforms -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+                <div class="waveform-container">
+                    <canvas class="waveform-canvas" id="waveformBefore"></canvas>
+                </div>
+                <div class="waveform-container">
+                    <canvas class="waveform-canvas" id="waveformAfter"></canvas>
+                </div>
+            </div>
+
+            <!-- Noise Types -->
+            <div class="noise-buttons">
+                <button class="noise-button" onclick="selectNoise('white')">
+                    <span class="icon">📻</span>
+                    White Noise
+                </button>
+                <button class="noise-button" onclick="selectNoise('pink')">
+                    <span class="icon">🌸</span>
+                    Pink Noise
+                </button>
+                <button class="noise-button" onclick="selectNoise('traffic')">
+                    <span class="icon">🚗</span>
+                    Traffic
+                </button>
+                <button class="noise-button" onclick="selectNoise('office')">
+                    <span class="icon">🏢</span>
+                    Office
+                </button>
+                <button class="noise-button" onclick="selectNoise('construction')">
+                    <span class="icon">🚧</span>
+                    Construction
+                </button>
+                <button class="noise-button" onclick="selectNoise('cafe')">
+                    <span class="icon">☕</span>
+                    Café
+                </button>
+            </div>
+
+            <!-- Volume Control -->
+            <div style="margin-top: 24px;">
+                <div class="slider-label">
+                    <span>Volume</span>
+                    <span class="slider-value"><span id="volumeValue">50</span>%</span>
+                </div>
+                <input type="range" class="slider" id="volumeSlider" min="0" max="100" value="50">
+            </div>
+
+            <!-- ANC Intensity -->
+            <div style="margin-top: 16px;">
+                <div class="slider-label">
+                    <span>ANC Intensity</span>
+                    <span class="slider-value"><span id="intensityValue">100</span>%</span>
+                </div>
+                <input type="range" class="slider" id="intensitySlider" min="0" max="100" value="100">
+            </div>
+
+            <!-- Actions -->
+            <div style="display: flex; gap: 12px; margin-top: 24px; justify-content: center;">
+                <button class="btn btn-primary" onclick="startProcessing()">▶ Start Processing</button>
+                <button class="btn btn-primary" onclick="stopProcessing()">⏸ Stop</button>
+            </div>
+        </div>
+
+        <!-- Detection Info -->
+        <div class="glass-card">
+            <div class="card-title">Current Detection</div>
+            <div style="display: flex; align-items: center; gap: 20px; padding: 20px; background: rgba(0,0,0,0.3); border-radius: 16px;">
+                <div style="font-size: 48px;" id="detectionIcon">🔊</div>
+                <div style="flex: 1;">
+                    <div style="font-size: 24px; font-weight: 700; margin-bottom: 8px;" id="detectionType">
+                        No active detection
+                    </div>
+                    <div style="color: var(--text-secondary);" id="detectionDetails">
+                        Start processing to detect noise
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast">
+        <div style="font-weight: 600; margin-bottom: 4px;" id="toastTitle">Notification</div>
+        <div style="font-size: 14px; color: var(--text-secondary);" id="toastMessage">Message</div>
+    </div>
+
+    <script>
+        // Configuration
+        const SERVER_URL = window.location.origin;
+        const API_KEY = 'dev-api-key'; // For demo purposes
+
+        // State
+        let socket = null;
+        let sessionId = null;
+        let audioContext = null;
+        let noiseSource = null;
+        let gainNode = null;
+        let analyserBefore = null;
+        let analyserAfter = null;
+        let isProcessing = false;
+        let ancEnabled = false;
+        let currentNoiseType = 'white';
+        let processingInterval = null;
+
+        // Initialize
+        window.addEventListener('load', () => {
+            initAudio();
+            connectWebSocket();
+        });
+
+        // WebSocket Connection
+        function connectWebSocket() {
+            socket = io(SERVER_URL);
+
+            socket.on('connect', () => {
+                console.log('WebSocket connected:', socket.id);
+                updateConnectionStatus(true);
+                showToast('Connected', 'Successfully connected to server');
+            });
+
+            socket.on('disconnect', () => {
+                console.log('WebSocket disconnected');
+                updateConnectionStatus(false);
+                showToast('Disconnected', 'Connection to server lost');
+            });
+
+            socket.on('session_started', (data) => {
+                sessionId = data.session_id;
+                console.log('Session started:', sessionId);
+                showToast('Session Started', 'Audio processing session initialized');
+            });
+
+            socket.on('audio_processed', (result) => {
+                handleProcessedAudio(result);
+            });
+
+            socket.on('anc_settings_updated', (data) => {
+                console.log('ANC settings updated:', data);
+            });
+
+            socket.on('error', (error) => {
+                console.error('WebSocket error:', error);
+                showToast('Error', error.message || 'An error occurred');
+            });
+        }
+
+        function updateConnectionStatus(connected) {
+            const dot = document.getElementById('statusDot');
+            const text = document.getElementById('statusText');
+
+            if (connected) {
+                dot.classList.add('connected');
+                text.textContent = 'Connected to server';
+            } else {
+                dot.classList.remove('connected');
+                text.textContent = 'Disconnected';
+            }
+        }
+
+        // Initialize Audio
+        function initAudio() {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            analyserBefore = audioContext.createAnalyser();
+            analyserAfter = audioContext.createAnalyser();
+            analyserBefore.fftSize = 2048;
+            analyserAfter.fftSize = 2048;
+            gainNode = audioContext.createGain();
+            gainNode.gain.value = 0.5;
+
+            console.log('Audio context initialized');
+        }
+
+        // Generate Noise (same as before)
+        function generateNoise(type, duration = 2) {
+            const sampleRate = audioContext.sampleRate;
+            const bufferSize = sampleRate * duration;
+            const buffer = audioContext.createBuffer(1, bufferSize, sampleRate);
+            const data = buffer.getChannelData(0);
+
+            switch(type) {
+                case 'white':
+                    for (let i = 0; i < bufferSize; i++) {
+                        data[i] = Math.random() * 2 - 1;
+                    }
+                    break;
+                case 'pink':
+                    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+                    for (let i = 0; i < bufferSize; i++) {
+                        const white = Math.random() * 2 - 1;
+                        b0 = 0.99886 * b0 + white * 0.0555179;
+                        b1 = 0.99332 * b1 + white * 0.0750759;
+                        b2 = 0.96900 * b2 + white * 0.1538520;
+                        b3 = 0.86650 * b3 + white * 0.3104856;
+                        b4 = 0.55000 * b4 + white * 0.5329522;
+                        b5 = -0.7616 * b5 - white * 0.0168980;
+                        data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.11;
+                        b6 = white * 0.115926;
+                    }
+                    break;
+                case 'traffic':
+                    for (let i = 0; i < bufferSize; i++) {
+                        const t = i / sampleRate;
+                        data[i] = Math.sin(2 * Math.PI * 60 * t) * 0.3 +
+                                 Math.sin(2 * Math.PI * 120 * t) * 0.2 +
+                                 (Math.random() * 2 - 1) * 0.3;
+                    }
+                    break;
+                case 'office':
+                    for (let i = 0; i < bufferSize; i++) {
+                        const t = i / sampleRate;
+                        const typing = Math.random() < 0.01 ? Math.random() : 0;
+                        data[i] = Math.sin(2 * Math.PI * 50 * t) * 0.1 +
+                                 (Math.random() * 2 - 1) * 0.1 + typing * 0.5;
+                    }
+                    break;
+                case 'construction':
+                    for (let i = 0; i < bufferSize; i++) {
+                        const t = i / sampleRate;
+                        data[i] = Math.sin(2 * Math.PI * 80 * t) * 0.4 +
+                                 Math.sin(2 * Math.PI * 160 * t) * 0.3 +
+                                 (Math.random() * 2 - 1) * 0.5;
+                    }
+                    break;
+                case 'cafe':
+                    for (let i = 0; i < bufferSize; i++) {
+                        const t = i / sampleRate;
+                        const clink = Math.random() < 0.005 ? Math.random() * Math.sin(2 * Math.PI * 2000 * t) : 0;
+                        data[i] = (Math.random() * 2 - 1) * 0.2 +
+                                 Math.sin(2 * Math.PI * 200 * t + Math.random()) * 0.15 +
+                                 clink * 0.3;
+                    }
+                    break;
+            }
+
+            return buffer;
+        }
+
+        // Toggle ANC
+        function toggleANC() {
+            ancEnabled = !ancEnabled;
+            const button = document.getElementById('ancButton');
+            const text = document.getElementById('ancText');
+            const status = document.getElementById('ancStatus');
+
+            if (ancEnabled) {
+                button.classList.add('active');
+                text.textContent = 'Disable ANC';
+                status.textContent = 'Active noise cancellation enabled';
+
+                // Start WebSocket session if not started
+                if (!sessionId && socket && socket.connected) {
+                    socket.emit('start_session', {
+                        config: {
+                            anc_enabled: true,
+                            anc_intensity: document.getElementById('intensitySlider').value / 100,
+                            anc_algorithm: 'lms'
+                        }
+                    });
+                } else if (socket && socket.connected) {
+                    // Update existing session
+                    socket.emit('update_anc_settings', {
+                        session_id: sessionId,
+                        anc_enabled: true,
+                        anc_intensity: document.getElementById('intensitySlider').value / 100
+                    });
+                }
+
+                showToast('ANC Activated', 'Noise cancellation is now processing audio');
+            } else {
+                button.classList.remove('active');
+                text.textContent = 'Enable ANC';
+                status.textContent = 'Ready to activate';
+
+                if (socket && socket.connected && sessionId) {
+                    socket.emit('update_anc_settings', {
+                        session_id: sessionId,
+                        anc_enabled: false
+                    });
+                }
+
+                showToast('ANC Deactivated', 'Noise cancellation disabled');
+            }
+        }
+
+        // Select Noise Type
+        function selectNoise(type) {
+            currentNoiseType = type;
+
+            // Update UI
+            document.querySelectorAll('.noise-button').forEach(btn => btn.classList.remove('active'));
+            event.target.closest('.noise-button').classList.add('active');
+
+            // Stop current playback
+            if (noiseSource) {
+                noiseSource.stop();
+                noiseSource = null;
+            }
+
+            showToast('Noise Selected', `Now using ${type} noise profile`);
+        }
+
+        // Start Processing
+        function startProcessing() {
+            if (isProcessing) return;
+
+            if (!socket || !socket.connected) {
+                showToast('Error', 'Not connected to server');
+                return;
+            }
+
+            // Start session if not started
+            if (!sessionId) {
+                socket.emit('start_session', {
+                    config: {
+                        anc_enabled: ancEnabled,
+                        anc_intensity: document.getElementById('intensitySlider').value / 100,
+                        anc_algorithm: 'lms'
+                    }
+                });
+            }
+
+            isProcessing = true;
+
+            // Generate and play noise
+            const noiseBuffer = generateNoise(currentNoiseType);
+            noiseSource = audioContext.createBufferSource();
+            noiseSource.buffer = noiseBuffer;
+            noiseSource.loop = true;
+            noiseSource.connect(gainNode);
+            gainNode.connect(analyserBefore);
+            analyserBefore.connect(audioContext.destination);
+            noiseSource.start();
+
+            // Start visualization
+            startVisualization();
+
+            // Start sending chunks to server
+            processingInterval = setInterval(() => {
+                sendAudioChunk();
+            }, 100); // Send every 100ms
+
+            showToast('Processing Started', 'Real-time audio processing active');
+        }
+
+        // Stop Processing
+        function stopProcessing() {
+            if (!isProcessing) return;
+
+            isProcessing = false;
+
+            if (noiseSource) {
+                noiseSource.stop();
+                noiseSource = null;
+            }
+
+            if (processingInterval) {
+                clearInterval(processingInterval);
+                processingInterval = null;
+            }
+
+            showToast('Processing Stopped', 'Audio processing paused');
+        }
+
+        // Send Audio Chunk to Server
+        function sendAudioChunk() {
+            if (!socket || !socket.connected || !sessionId) return;
+
+            // Generate a chunk of audio
+            const chunkSize = 1024;
+            const audioData = new Float32Array(chunkSize);
+            for (let i = 0; i < chunkSize; i++) {
+                audioData[i] = (Math.random() * 2 - 1) * 0.5; // Simulated audio
+            }
+
+            // Convert to base64
+            const audioBase64 = btoa(String.fromCharCode.apply(null, new Uint8Array(audioData.buffer)));
+
+            // Send to server via WebSocket
+            socket.emit('process_audio', {
+                session_id: sessionId,
+                audio_data: audioBase64,
+                apply_anc: ancEnabled
+            });
+        }
+
+        // Handle Processed Audio from Server
+        function handleProcessedAudio(result) {
+            // Update metrics
+            if (result.anc_metrics) {
+                document.getElementById('cancellationDB').textContent =
+                    Math.round(result.anc_metrics.cancellation_db);
+            }
+
+            if (result.performance) {
+                document.getElementById('latencyMS').textContent =
+                    Math.round(result.performance.latency_ms);
+            }
+
+            if (result.chunk_id) {
+                document.getElementById('chunksProcessed').textContent = result.chunk_id;
+            }
+
+            // Update detection
+            if (result.noise_detection && result.noise_detection.type) {
+                const type = result.noise_detection.type;
+                const confidence = (result.noise_detection.confidence * 100).toFixed(1);
+                const isEmergency = result.noise_detection.is_emergency;
+
+                document.getElementById('detectionIcon').textContent = isEmergency ? '🚨' : '🔊';
+                document.getElementById('detectionType').textContent =
+                    `${type.charAt(0).toUpperCase() + type.slice(1)} Noise`;
+                document.getElementById('detectionDetails').textContent =
+                    `Confidence: ${confidence}%${isEmergency ? ' • EMERGENCY' : ''}`;
+
+                if (isEmergency) {
+                    showToast('⚠️ Emergency Alert', `${type} sound detected!`);
+                }
+            }
+        }
+
+        // Visualization
+        function startVisualization() {
+            const canvasBefore = document.getElementById('waveformBefore');
+            const canvasAfter = document.getElementById('waveformAfter');
+            const ctxBefore = canvasBefore.getContext('2d');
+            const ctxAfter = canvasAfter.getContext('2d');
+
+            function draw() {
+                if (!isProcessing) return;
+
+                requestAnimationFrame(draw);
+
+                const bufferLength = analyserBefore.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+                analyserBefore.getByteTimeDomainData(dataArray);
+
+                drawWaveform(ctxBefore, canvasBefore, dataArray, '#0071e3');
+                drawWaveform(ctxAfter, canvasAfter, dataArray, '#30d158');
+            }
+
+            draw();
+        }
+
+        function drawWaveform(ctx, canvas, dataArray, color) {
+            const width = canvas.width = canvas.offsetWidth * 2;
+            const height = canvas.height = canvas.offsetHeight * 2;
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = color;
+            ctx.beginPath();
+
+            const sliceWidth = width / dataArray.length;
+            let x = 0;
+
+            for (let i = 0; i < dataArray.length; i++) {
+                const v = dataArray[i] / 128.0;
+                const y = v * height / 2;
+
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+
+                x += sliceWidth;
+            }
+
+            ctx.lineTo(width, height / 2);
+            ctx.stroke();
+        }
+
+        // Slider Controls
+        document.getElementById('volumeSlider').addEventListener('input', (e) => {
+            const value = e.target.value;
+            document.getElementById('volumeValue').textContent = value;
+            if (gainNode) {
+                gainNode.gain.value = value / 100;
+            }
+        });
+
+        document.getElementById('intensitySlider').addEventListener('input', (e) => {
+            const value = e.target.value;
+            document.getElementById('intensityValue').textContent = value;
+
+            if (socket && socket.connected && sessionId) {
+                socket.emit('update_anc_settings', {
+                    session_id: sessionId,
+                    anc_intensity: value / 100
+                });
+            }
+        });
+
+        // Toast Notifications
+        function showToast(title, message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastTitle').textContent = title;
+            document.getElementById('toastMessage').textContent = message;
+
+            toast.classList.add('show');
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Cleanup on unload
+        window.addEventListener('beforeunload', () => {
+            if (socket && socket.connected && sessionId) {
+                socket.emit('end_session', { session_id: sessionId });
+            }
+        });
+    </script>
+</body>
+</html>

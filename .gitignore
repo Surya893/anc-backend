@@ -1,0 +1,298 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+anc_system.db
+*.db-journal
+*.db-shm
+*.db-wal
+database/
+*.sql
+*.dump
+backups/*.sql
+
+# Audio Files (generated/test - keep essential ones)
+recordings/*.wav
+test_*.wav
+demo_*.wav
+anti_*.wav
+cancelled_*.wav
+# Keep specific demo files commented out to include them
+# !demo-premium.html
+
+# Models (binary files - generated)
+# Keep the trained model in git for now
+# noise_classifier_sklearn.pkl
+# noise_classifier_emergency.pkl
+
+# Data files (generated)
+*.npz
+features.npz
+features_augmented.npz
+
+# Generated Images
+wav_analysis.png
+# Keep anc_results.png for documentation
+# !anc_results.png
+
+# Logs
+*.log
+logs/
+*.out
+test.log
+tests/test.log
+*.log.*
+log/
+audit.log
+error.log
+access.log
+debug.log
+production.log
+development.log
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Docker
+.dockerignore
+
+# Terraform
+*.tfstate
+*.tfstate.backup
+.terraform/
+*.tfvars
+!terraform.tfvars.example
+terraform.tfplan
+outputs.json
+
+# Cloud
+.aws/
+.azure/
+.gcp/
+
+# Coverage
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# Build artifacts (firmware)
+firmware/build/
+*.o
+*.elf
+*.bin
+*.hex
+*.map
+*.lst
+*.d
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Node modules (if any)
+node_modules/
+package-lock.json
+
+# OS
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# IDE specific
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Documentation build
+docs/_build/
+docs/.doctrees/
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Lambda deployment packages
+cloud/lambda/*/*.zip
+cloud/lambda/*/package/
+
+# IoT Certificates and Keys (SECURITY CRITICAL)
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx
+cert.pem
+private.key
+public.key
+AmazonRootCA*.pem
+certificates/
+certs/
+keys/
+*.csr
+
+# AWS Credentials (SECURITY CRITICAL)
+credentials
+config
+.aws/credentials
+.aws/config
+
+# Secrets
+secrets.json
+*.secret
+.secrets/
+*.credentials
+
+# CI/CD
+.github/workflows/*.log
+
+# Local development
+local/
+.local/
+
+# Test artifacts
+test_results/
+test-results.xml
+coverage.xml
+.coverage.*
+*.cover
+nosetests.xml
+junit.xml
+pytest_cache/
+
+# Cache directories
+.cache/
+cache/
+*.cache
+
+# Synthetic/generated data
+features_synthetic.npz
+synthetic_data/
+generated/
+
+# Temporary download files
+downloads/
+*.download
+
+# Editor and IDE backup files
+*.swp
+*.swo
+*~
+\#*\#
+.\#*
+
+# macOS specific
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Windows specific
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux specific
+.directory
+.Trash-*
+.nfs*
+
+# Compiled binaries
+*.exe
+*.dll
+*.dylib
+*.so.*
+
+# Core dumps
+core
+core.*
+*.core
+
+# Profiling data
+*.prof
+*.pstats
+.profiling/
+
+# Benchmark results
+benchmark_results/
+*.benchmark
+
+# Large data files
+*.hdf5
+*.h5
+*.pickle
+*.pkl.gz
+*.npy.gz
+
+# Model checkpoints
+checkpoints/
+*.ckpt
+*.pt
+*.pth
+model_*/
+saved_models/
+
+# Tensorboard logs
+runs/
+tensorboard/
+events.out.tfevents.*

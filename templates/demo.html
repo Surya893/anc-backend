@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ANC System Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: 600;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            background: white;
+            border-radius: 50%;
+            margin-right: 10px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .card h2 {
+            color: #333;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        .btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn.active {
+            background: #4CAF50;
+        }
+
+        .btn.btn-danger {
+            background: #F44336;
+        }
+
+        .btn.btn-warning {
+            background: #FF9800;
+        }
+
+        .slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #ddd;
+            outline: none;
+            margin: 20px 0;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+
+        .slider::-moz-range-thumb {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+
+        .detection-display {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 10px;
+        }
+
+        .detection-icon {
+            font-size: 3em;
+        }
+
+        .detection-info {
+            flex: 1;
+        }
+
+        .detection-class {
+            font-size: 1.5em;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .detection-confidence {
+            color: #666;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 10px;
+        }
+
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .badge {
+            background: #667eea;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .test-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn-small {
+            padding: 10px 20px;
+            font-size: 0.9em;
+        }
+
+        .alert {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+
+        .alert.success {
+            background: #d4edda;
+            border-left-color: #28a745;
+        }
+
+        .indicator-light {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ccc;
+            margin: 0 auto 10px;
+            transition: background 0.3s;
+        }
+
+        .indicator-light.active {
+            background: #4CAF50;
+            box-shadow: 0 0 20px #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🎧 Active Noise Cancellation Platform</h1>
+            <div class="status-badge">
+                <span class="status-dot"></span>
+                <span>System Ready for Demo</span>
+            </div>
+        </div>
+
+        <!-- ANC Control -->
+        <div class="card">
+            <h2>ANC Control</h2>
+            <center>
+                <button class="btn" id="ancBtn" onclick="toggleANC()">
+                    <span id="ancText">Enable ANC</span>
+                </button>
+                <div style="margin-top: 20px;">
+                    <div class="indicator-light" id="indicator"></div>
+                    <span id="statusText">ANC Disabled</span>
+                </div>
+            </center>
+        </div>
+
+        <!-- Intensity Control -->
+        <div class="card">
+            <h2>
+                Noise Intensity
+                <span class="badge" id="intensityValue">50%</span>
+            </h2>
+            <input type="range" class="slider" min="0" max="100" value="50" id="intensitySlider">
+            <div style="display: flex; justify-content: space-between; color: #666;">
+                <span>Low</span>
+                <span>Medium</span>
+                <span>High</span>
+            </div>
+        </div>
+
+        <!-- Current Detection -->
+        <div class="card">
+            <h2>
+                Current Detection
+                <span class="badge" id="confidenceBadge">0%</span>
+            </h2>
+            <div class="detection-display">
+                <div class="detection-icon" id="detectionIcon">🔊</div>
+                <div class="detection-info">
+                    <div class="detection-class" id="noiseClass">No Active Detection</div>
+                    <div class="detection-confidence" id="confidenceText">Confidence: 0%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Controls -->
+        <div class="card">
+            <h2>Simulation Controls (Demo)</h2>
+            <div class="test-buttons">
+                <button class="btn btn-small" onclick="simulateNoise('Office', '🏢', 87)">Office Noise</button>
+                <button class="btn btn-small" onclick="simulateNoise('Traffic', '🚗', 92)">Traffic</button>
+                <button class="btn btn-small" onclick="simulateNoise('Construction', '🚧', 95)">Construction</button>
+                <button class="btn btn-small btn-warning" onclick="simulateNoise('Alarm', '🚨', 98)">Alarm</button>
+                <button class="btn btn-small btn-danger" onclick="simulateNoise('Siren', '🚨', 99)">Emergency Siren</button>
+                <button class="btn btn-small" onclick="simulateNoise('Music', '🎵', 85)">Music</button>
+            </div>
+            <div id="notification"></div>
+        </div>
+
+        <!-- Statistics -->
+        <div class="card">
+            <h2>Platform Statistics</h2>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value" id="detectionCount">0</div>
+                    <div class="stat-label">Total Detections</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">35-45 dB</div>
+                    <div class="stat-label">Noise Cancellation</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">95.83%</div>
+                    <div class="stat-label">Model Accuracy</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="uptime">0m 0s</div>
+                    <div class="stat-label">Demo Uptime</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Platform Features -->
+        <div class="card">
+            <h2>🚀 Platform Features</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin-top: 20px;">
+                <div style="padding: 15px; background: #f5f5f5; border-radius: 8px;">
+                    <strong>🎯 Advanced Algorithms</strong>
+                    <p style="margin-top: 5px; color: #666;">LMS, NLMS, RLS, Frequency-domain ANC with adaptive filtering</p>
+                </div>
+                <div style="padding: 15px; background: #f5f5f5; border-radius: 8px;">
+                    <strong>🤖 ML Classification</strong>
+                    <p style="margin-top: 5px; color: #666;">6 noise types, 95.83% accuracy using scikit-learn</p>
+                </div>
+                <div style="padding: 15px; background: #f5f5f5; border-radius: 8px;">
+                    <strong>⚡ Real-time Processing</strong>
+                    <p style="margin-top: 5px; color: #666;">&lt;30ms latency for live audio processing</p>
+                </div>
+                <div style="padding: 15px; background: #f5f5f5; border-radius: 8px;">
+                    <strong>🔔 Emergency Detection</strong>
+                    <p style="margin-top: 5px; color: #666;">Automatic alerts for alarm/siren sounds</p>
+                </div>
+                <div style="padding: 15px; background: #f5f5f5; border-radius: 8px;">
+                    <strong>☁️ Cloud Ready</strong>
+                    <p style="margin-top: 5px; color: #666;">Docker, Kubernetes, multi-cloud deployment (AWS/GCP/Azure)</p>
+                </div>
+                <div style="padding: 15px; background: #f5f5f5; border-radius: 8px;">
+                    <strong>📊 Monitoring</strong>
+                    <p style="margin-top: 5px; color: #666;">Prometheus metrics, Grafana dashboards, alerts</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ancEnabled = false;
+        let detections = 0;
+        let startTime = Date.now();
+
+        // Update uptime
+        setInterval(() => {
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            document.getElementById('uptime').textContent = `${minutes}m ${seconds}s`;
+        }, 1000);
+
+        // Toggle ANC
+        function toggleANC() {
+            ancEnabled = !ancEnabled;
+            const btn = document.getElementById('ancBtn');
+            const text = document.getElementById('ancText');
+            const indicator = document.getElementById('indicator');
+            const status = document.getElementById('statusText');
+
+            if (ancEnabled) {
+                btn.classList.add('active');
+                text.textContent = 'Disable ANC';
+                indicator.classList.add('active');
+                status.textContent = 'ANC Active';
+            } else {
+                btn.classList.remove('active');
+                text.textContent = 'Enable ANC';
+                indicator.classList.remove('active');
+                status.textContent = 'ANC Disabled';
+            }
+        }
+
+        // Update intensity
+        document.getElementById('intensitySlider').addEventListener('input', function(e) {
+            document.getElementById('intensityValue').textContent = e.target.value + '%';
+        });
+
+        // Simulate noise detection
+        function simulateNoise(type, icon, confidence) {
+            detections++;
+            document.getElementById('detectionCount').textContent = detections;
+            document.getElementById('noiseClass').textContent = type + ' Noise';
+            document.getElementById('detectionIcon').textContent = icon;
+            document.getElementById('confidenceText').textContent = `Confidence: ${confidence}%`;
+            document.getElementById('confidenceBadge').textContent = confidence + '%';
+
+            // Show notification
+            const notification = document.getElementById('notification');
+            const isEmergency = type === 'Alarm' || type === 'Siren';
+            notification.innerHTML = `
+                <div class="alert ${!isEmergency ? 'success' : ''}" style="margin-top: 15px;">
+                    <strong>${isEmergency ? '🚨 Emergency Alert!' : '✅ Detected:'}</strong>
+                    ${type} noise at ${confidence}% confidence
+                    ${ancEnabled ? ' - ANC processing active' : ''}
+                </div>
+            `;
+
+            setTimeout(() => {
+                notification.innerHTML = '';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

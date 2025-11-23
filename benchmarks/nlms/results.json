@@ -1,0 +1,106 @@
+{
+  "numpy": {
+    "latency": {
+      "implementation": "numpy",
+      "chunk_size": 512,
+      "iterations": 1000,
+      "latency_ms": {
+        "mean": 6.847179975000189,
+        "median": 6.434161000015592,
+        "std": 1.1593540520090813,
+        "min": 5.6360139999753756,
+        "max": 12.00639799998271,
+        "p50": 6.434161000015592,
+        "p95": 9.42435900001328,
+        "p99": 10.994481299992174
+      }
+    },
+    "throughput": {
+      "implementation": "numpy",
+      "duration_sec": 10.002662176000001,
+      "chunks_processed": 1759,
+      "throughput_chunks_per_sec": 175.85318478719358,
+      "throughput_samples_per_sec": 90036.83061104311,
+      "realtime_factor": 1.8757673043967316
+    },
+    "memory": {
+      "implementation": "numpy",
+      "memory_mb": {
+        "baseline": 147.6796875,
+        "after_init": 147.6796875,
+        "after_processing": 147.6796875,
+        "filter_overhead": 0.0,
+        "processing_overhead": 0.0,
+        "total_overhead": 0.0
+      },
+      "traced_memory_mb": {
+        "current": 3.6663742065429688,
+        "peak": 7.327838897705078
+      }
+    },
+    "cancellation": {
+      "implementation": "numpy",
+      "iterations": 1000,
+      "cancellation_db": {
+        "mean": 23.76654815673828,
+        "median": 23.706483840942383,
+        "std": 9.131595611572266,
+        "min": 4.74763822555542,
+        "max": 39.89689254760742,
+        "final_100_avg": 37.93671417236328
+      }
+    }
+  },
+  "pure_python": {
+    "latency": {
+      "implementation": "pure_python",
+      "chunk_size": 512,
+      "iterations": 1000,
+      "latency_ms": {
+        "mean": 8.721303399000702,
+        "median": 8.285288999985596,
+        "std": 1.2849985728922422,
+        "min": 7.467229000013731,
+        "max": 16.295264000007137,
+        "p50": 8.285288999985596,
+        "p95": 11.602519799998843,
+        "p99": 14.18587126002393
+      }
+    },
+    "throughput": {
+      "implementation": "pure_python",
+      "duration_sec": 10.001262407000013,
+      "chunks_processed": 1255,
+      "throughput_chunks_per_sec": 125.48415879195502,
+      "throughput_samples_per_sec": 64247.88930148097,
+      "realtime_factor": 1.3384976937808537
+    },
+    "memory": {
+      "implementation": "pure_python",
+      "memory_mb": {
+        "baseline": 148.6796875,
+        "after_init": 148.6796875,
+        "after_processing": 148.6796875,
+        "filter_overhead": 0.0,
+        "processing_overhead": 0.0,
+        "total_overhead": 0.0
+      },
+      "traced_memory_mb": {
+        "current": 3.701629638671875,
+        "peak": 7.327548980712891
+      }
+    },
+    "cancellation": {
+      "implementation": "pure_python",
+      "iterations": 1000,
+      "cancellation_db": {
+        "mean": 39.72107782621553,
+        "median": 39.713627821888444,
+        "std": 18.372151628349556,
+        "min": 5.202834531267349,
+        "max": 71.76895043930801,
+        "final_100_avg": 68.36233918045099
+      }
+    }
+  }
+}

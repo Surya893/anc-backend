@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: anc-config
+  namespace: anc-platform
+data:
+  # Application configuration
+  SAMPLE_RATE: "44100"
+  CHUNK_SIZE: "1024"
+  FILTER_LENGTH: "512"
+  ALGORITHM: "nlms"
+  
+  # Feature extraction
+  MFCC_COEFFICIENTS: "13"
+  N_FFT: "2048"
+  HOP_LENGTH: "512"
+  
+  # Model configuration
+  CONFIDENCE_THRESHOLD: "0.7"
+  EMERGENCY_THRESHOLD: "0.9"
+  
+  # System limits
+  MAX_RECORDING_DURATION: "300"
+  MAX_CONCURRENT_SESSIONS: "100"
+  
+  # Logging
+  LOG_LEVEL: "INFO"
+  LOG_FORMAT: "json"

@@ -1,0 +1,69 @@
+{
+  "dashboard": {
+    "title": "ANC Platform Monitoring",
+    "tags": ["anc", "audio", "noise-cancellation"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "title": "Request Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(anc_requests_total[5m])",
+            "legendFormat": "{{method}} {{endpoint}}"
+          }
+        ]
+      },
+      {
+        "title": "ANC System Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "anc_system_status",
+            "legendFormat": "Status"
+          }
+        ]
+      },
+      {
+        "title": "Total Detections",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "anc_detections_total",
+            "legendFormat": "Detections"
+          }
+        ]
+      },
+      {
+        "title": "Emergency Alerts",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(anc_emergencies_total[5m])",
+            "legendFormat": "Emergency Rate"
+          }
+        ]
+      },
+      {
+        "title": "CPU Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(process_cpu_seconds_total{job='anc-system'}[5m])",
+            "legendFormat": "{{pod}}"
+          }
+        ]
+      },
+      {
+        "title": "Memory Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "process_resident_memory_bytes{job='anc-system'} / 1024 / 1024",
+            "legendFormat": "{{pod}} MB"
+          }
+        ]
+      }
+    ]
+  }
+}
