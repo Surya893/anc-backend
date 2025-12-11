@@ -403,6 +403,115 @@ Logs written to `logs/anc_platform.log` with rotation:
 - Performance metrics
 - Audit trail
 
+## 📋 Background Tasks (Celery)
+
+### Architecture
+
+The Celery task system has been refactored into a modular structure:
+
+```
+src/api/
+├── celery_app.py              # Celery app initialization
+└── tasks/
+    ├── __init__.py            # Task exports and periodic task setup
+    ├── utils.py               # Shared utilities (logging, DB, validation)
+    ├── audio_processing.py    # Audio file processing tasks
+    ├── model_training.py      # Model training tasks
+    ├── analytics.py           # Analytics and reporting tasks
+    └── maintenance.py         # System maintenance tasks
+```
+
+### Task Categories
+
+#### Audio Processing Tasks
+- `process_audio_file`: Process single audio file with chunk-based streaming
+- `batch_process_files`: Process multiple files with progress tracking
+
+**Key improvements:**
+- Replaced `asyncio.run` per-chunk with sync adapter (`process_chunk_sync`)
+- Proper chunk size validation and management
+- Structured progress tracking
+
+#### Model Training Tasks
+- `train_noise_classifier`: Train RF classifier from organized audio data
+- `validate_model`: Verify trained model is loadable
+
+#### Analytics Tasks
+- `analyze_session_data`: Comprehensive session analysis with noise distribution
+- `generate_daily_report`: Daily usage and performance metrics
+- `export_session_data`: Export session data (JSON/CSV)
+
+#### Maintenance Tasks
+- `cleanup_old_sessions`: Remove sessions older than N days
+- `cleanup_failed_sessions`: Remove failed/incomplete sessions
+- `vacuum_database`: Database optimization
+- `health_check`: System health monitoring
+
+### Running Tasks
+
+#### Development (Eager Mode)
+```bash
+# Terminal 1: Start Redis
+redis-server
+
+# Terminal 2: Start Celery worker
+cd /home/engine/project
+celery -A src.api.tasks worker --loglevel=debug
+
+# Terminal 3: Start Flask app
+python -c "from src.api.server import app; app.run(debug=True)"
+```
+
+#### Production
+```bash
+# Using systemd or supervisor
+celery -A src.api.tasks worker \
+  --loglevel=info \
+  --concurrency=4 \
+  --max-tasks-per-child=100
+
+# With beat scheduler for periodic tasks
+celery -A src.api.tasks beat --loglevel=info
+```
+
+### Task Configuration
+
+Configure in environment variables:
+```bash
+# Broker and result backend
+CELERY_BROKER_URL=redis://localhost:6379/0
+CELERY_RESULT_BACKEND=redis://localhost:6379/1
+
+# Audio processing
+AUDIO_SAMPLE_RATE=16000
+AUDIO_CHUNK_SIZE=16000  # 1 second at 16kHz
+
+# Model paths
+ML_MODEL_PATH=models/noise_classifier.joblib
+ML_SCALER_PATH=models/feature_scaler.joblib
+```
+
+### Periodic Task Schedule
+
+Configured in `src/api/tasks/__init__.py`:
+
+- **Daily Report** (1:00 AM UTC): `generate_daily_report`
+- **Cleanup Old Sessions** (Sunday 2:00 AM UTC): `cleanup_old_sessions` (30+ days)
+- **Cleanup Failed Sessions** (3:00 AM UTC): `cleanup_failed_sessions` (24+ hours)
+- **Database Vacuum** (Saturday 4:00 AM UTC): `vacuum_database`
+- **Health Check** (Every hour): `health_check`
+
+### Testing Tasks
+
+```bash
+# Run task unit tests
+pytest tests/unit/test_tasks_audio_processing.py -v
+pytest tests/unit/test_tasks_maintenance.py -v
+
+# Test with eager mode (synchronous execution)
+# Configured in pytest fixtures
+```
+
 ## 🧪 Testing
 
 ```bash
@@ -417,6 +526,12 @@ pytest tests/test_api.py
 
 # With verbose output
 pytest -v
+
+# Run only unit tests
+pytest tests/unit/ -v
+
+# Run only integration tests
+pytest tests/integration/ -v
 ```
 
 ## 🚢 Deployment
