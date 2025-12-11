@@ -201,6 +201,34 @@ docker-compose up -d
 
 **Use Case**: Staging, small to medium production
 
+### Testing Before Deployment
+
+Before deploying to production, ensure all tests pass:
+
+```bash
+# Run full test suite
+pytest tests/ -v
+
+# Run Flask blueprint tests
+pytest tests/unit/test_flask_blueprints.py -v
+
+# Run Celery task tests
+pytest tests/unit/test_celery_tasks.py -v
+
+# Generate coverage report
+pytest --cov=backend --cov=src --cov-report=html
+
+# Run integration tests
+pytest tests/integration/ -v
+
+# Run specific markers
+pytest -m "flask and auth" -v      # Flask authentication tests
+pytest -m "celery" -v              # Celery task tests
+pytest -m "audio" -v               # Audio processing tests
+```
+
+All tests should pass with >80% code coverage before production deployment.
+
 ### 3. Kubernetes (Enterprise Scale)
 
 ```yaml

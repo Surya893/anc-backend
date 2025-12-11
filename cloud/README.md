@@ -1,4 +1,4 @@
-# ANC Platform - AWS Cloud Infrastructure
+# ANC Platform - AWS Cloud Infrastsructure
 
 Complete cloud infrastructure for real-time Active Noise Cancellation processing on AWS.
 
@@ -457,14 +457,116 @@ aws cloudwatch get-metric-statistics \
 5. **Monitoring**: CloudTrail for API auditing, VPC Flow Logs
 6. **WAF**: Rate limiting and SQL injection protection
 
-## Related Documentation
+## Terraform Organization Guide
 
-- [Terraform Guide](./terraform/README.md)
-- [Lambda Deployment](./lambda/README.md)
-- [AWS Architecture](./AWS_ARCHITECTURE.md)
-- [Architecture Refinements](./ARCHITECTURE_REFINEMENTS.md)
-- [Implementation Summary](./IMPLEMENTATION_SUMMARY.md)
-- [Docker/Kubernetes Guide](../docs/deployment/)
+### Directory Structure
+
+The Terraform configuration has been reorganized for modularity and maintainability:
+
+```
+cloud/terraform/
+├── main.tf                      # Main provider and resource definitions
+├── variables.tf                 # Input variables and default values
+├── outputs.tf                   # Output values for cross-stack reference
+├── terraform.tfvars             # Environment-specific variable values
+│
+├── modules/                     # Reusable Terraform modules
+│   ├── api_gateway/            # API Gateway REST + WebSocket setup
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   └── outputs.tf
+│   ├── lambda/                 # Lambda functions
+│   │   ├── audio_processor/
+│   │   ├── audio_receiver/
+│   │   ├── audio_sender/
+│   │   └── websocket_handlers/
+│   ├── iot/                    # IoT Core and Device Shadow
+│   │   ├── main.tf
+│   │   └── variables.tf
+│   ├── database/               # RDS PostgreSQL configuration
+│   │   ├── main.tf
+│   │   └── variables.tf
+│   ├── storage/                # S3, DynamoDB, ElastiCache
+│   │   ├── main.tf
+│   │   └── variables.tf
+│   └── monitoring/             # CloudWatch, X-Ray setup
+│       ├── main.tf
+│       └── variables.tf
+│
+└── environments/                # Environment-specific configs
+    ├── dev/
+    │   └── terraform.tfvars
+    ├── staging/
+    │   └── terraform.tfvars
+    └── prod/
+        └── terraform.tfvars
+```
+
+### Using Modules
+
+To use the reorganized modules:
+
+```bash
+cd cloud/terraform/
+
+# Deploy to development environment
+terraform init -backend-config="environments/dev/backend.tf"
+terraform plan -var-file="environments/dev/terraform.tfvars"
+terraform apply -var-file="environments/dev/terraform.tfvars"
+
+# Or for production (requires additional approvals)
+terraform plan -var-file="environments/prod/terraform.tfvars"
+terraform apply -var-file="environments/prod/terraform.tfvars"
+```
+
+### Module Documentation
+
+Each module is self-contained with its own documentation. Example:
+
+```
+cloud/terraform/modules/api_gateway/
+├── README.md                    # Module-specific documentation
+├── main.tf                      # Resource definitions
+├── variables.tf                 # Input variables
+└── outputs.tf                   # Output values
+```
+
+To view module variables:
+```bash
+cd cloud/terraform
+terraform providers
+terraform init
+terraform validate
+```
+
+### Adding New Modules
+
+Create a new module for additional infrastructure:
+
+```bash
+# Create module directory
+mkdir -p cloud/terraform/modules/my-service
+
+# Create standard files
+touch cloud/terraform/modules/my-service/{main,variables,outputs}.tf
+touch cloud/terraform/modules/my-service/README.md
+
+# Reference in main terraform config
+# main.tf:
+module "my_service" {
+  source = "./modules/my-service"
+  
+  # Pass variables
+  environment = var.environment
+}
+```
+
+## Support
+
+- **Documentation**: [AWS_ARCHITECTURE.md](AWS_ARCHITECTURE.md)
+- **Terraform Registry**: https://registry.terraform.io/
+- **Issues**: Create GitHub issue
+- **Email**: support@anc-platform.com
 
 ## Support
 
