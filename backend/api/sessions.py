@@ -2,10 +2,11 @@
 Session Management API Endpoints
 """
 
-from flask import Blueprint, request, jsonify
-from middleware.auth import require_auth
+from flask import Blueprint, request, jsonify, g
+from backend.middleware.auth import require_auth
 from datetime import datetime
 import logging
+from src.db.models import db, AudioSession, ProcessingMetric
 
 logger = logging.getLogger(__name__)
 
@@ -17,10 +18,6 @@ sessions_bp = Blueprint('sessions', __name__)
 def create_session():
     """Create new audio processing session"""
     try:
-        from flask import g
-        from config.database import db
-        from database.models import AudioSession
-
         data = request.get_json() or {}
 
         # Create new session
@@ -52,10 +49,6 @@ def create_session():
 def update_session(session_id):
     """Update existing session"""
     try:
-        from flask import g
-        from config.database import db
-        from database.models import AudioSession
-
         session = AudioSession.query.filter_by(
             id=session_id,
             user_id=g.current_user.id
@@ -91,9 +84,6 @@ def update_session(session_id):
 def get_session_metrics(session_id):
     """Get metrics for a specific session"""
     try:
-        from flask import g
-        from database.models import AudioSession, ProcessingMetric
-
         session = AudioSession.query.filter_by(
             id=session_id,
             user_id=g.current_user.id

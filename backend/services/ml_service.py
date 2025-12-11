@@ -16,15 +16,15 @@ class MLService:
 
     def __init__(self):
         """Initialize ML service and load model"""
-        from config.settings import Config
-        self.config = Config
+        from config import get_config
+        self.config = get_config()
         self.model = None
         self._load_model()
 
     def _load_model(self):
         """Load trained ML model"""
         try:
-            model_path = Path(self.config.ML_MODEL_PATH)
+            model_path = Path(self.config.MODEL_PATH) / self.config.NOISE_CLASSIFIER_MODEL
             if model_path.exists():
                 with open(model_path, 'rb') as f:
                     self.model = pickle.load(f)

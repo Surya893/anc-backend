@@ -11,21 +11,23 @@ import os
 from pathlib import Path
 
 # Import configuration
-from config.settings import Config
-from config.database import db, init_db
+from config import get_config
+from src.db.models import db, init_db as init_db_models
 
 # Import API blueprints
-from api.health import health_bp
-from api.audio import audio_bp
-from api.users import users_bp
-from api.sessions import sessions_bp
+from backend.api.health import health_bp
+from backend.api.audio import audio_bp
+from backend.api.users import users_bp
+from backend.api.sessions import sessions_bp
 
 # Import WebSocket handlers
-from websocket import init_socketio
+try:
+    from backend.websocket import init_socketio
+except ImportError:
+    init_socketio = None
 
 # Import middleware
-from middleware.auth import setup_jwt
-from middleware.logging import setup_logging
+from backend.middleware.auth import setup_jwt
 
 # Configure logging
 logging.basicConfig(
@@ -41,7 +43,8 @@ def create_app(config_name='development'):
     app = Flask(__name__)
 
     # Load configuration
-    app.config.from_object(Config)
+    config = get_config(config_name)
+    app.config.from_object(config)
 
     # Setup CORS
     CORS(app, resources={
@@ -58,12 +61,9 @@ def create_app(config_name='development'):
     # Setup JWT authentication
     setup_jwt(app)
 
-    # Setup request logging
-    setup_logging(app)
-
     # Create database tables
     with app.app_context():
-        init_db()
+        init_db_models(app)
         logger.info("Database initialized")
 
     # Register API blueprints

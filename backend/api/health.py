@@ -4,8 +4,13 @@ Health Check API Endpoints
 
 from flask import Blueprint, jsonify
 from datetime import datetime
-import psutil
 import os
+
+try:
+    import psutil
+    PSUTIL_AVAILABLE = True
+except ImportError:
+    PSUTIL_AVAILABLE = False
 
 health_bp = Blueprint('health', __name__)
 
@@ -24,17 +29,21 @@ def health_check():
 def detailed_health():
     """Detailed health check with system metrics"""
     try:
-        # Get system metrics
-        cpu_percent = psutil.cpu_percent(interval=1)
-        memory = psutil.virtual_memory()
-        disk = psutil.disk_usage('/')
-
-        return jsonify({
+        system_info = {
             'status': 'healthy',
             'timestamp': datetime.utcnow().isoformat(),
             'service': 'anc-backend',
-            'version': '2.0.0',
-            'system': {
+            'version': '2.0.0'
+        }
+        
+        # Get system metrics if psutil is available
+        if PSUTIL_AVAILABLE:
+            # Get system metrics
+            cpu_percent = psutil.cpu_percent(interval=1)
+            memory = psutil.virtual_memory()
+            disk = psutil.disk_usage('/')
+            
+            system_info['system'] = {
                 'cpu_percent': cpu_percent,
                 'memory': {
                     'total': memory.total,
@@ -47,12 +56,24 @@ def detailed_health():
                     'free': disk.free,
                     'percent': disk.percent
                 }
-            },
-            'process': {
+            }
+            system_info['process'] = {
                 'pid': os.getpid(),
                 'threads': len(psutil.Process().threads())
             }
-        }), 200
+        else:
+            system_info['system'] = {
+                'note': 'System metrics not available (psutil not installed)',
+                'cpu_percent': None,
+                'memory': None,
+                'disk': None
+            }
+            system_info['process'] = {
+                'pid': os.getpid(),
+                'threads': None
+            }
+
+        return jsonify(system_info), 200
 
     except Exception as e:
         return jsonify({
@@ -67,7 +88,7 @@ def readiness():
     """Kubernetes readiness probe"""
     # Check if database is accessible
     try:
-        from config.database import db
+        from src.db.models import db
         db.session.execute('SELECT 1')
         return jsonify({'status': 'ready'}), 200
     except Exception as e:
