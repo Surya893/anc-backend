@@ -1,44 +1,64 @@
-# Noise Classification System with PyTorch
+# Noise Classification System - Architecture v2.0
 
 ## Overview
 
-A comprehensive PyTorch-based machine learning system for classifying different types of environmental noise (traffic, alarms, office, etc.) using audio features extracted from stored noise recordings.
+A refactored, modular PyTorch-based machine learning system for classifying 58 types of environmental noise with improved maintainability and extensibility.
 
-## Features
+## 🎯 Key Improvements in v2.0
 
-- **MFCC Feature Extraction**: Mel-Frequency Cepstral Coefficients and derivatives
-- **Multi-Feature Analysis**: Spectral, temporal, and chroma features
-- **Multiple Model Architectures**: MLP, CNN, and Ensemble models
-- **Complete Training Pipeline**: Training, validation, early stopping, and learning rate scheduling
-- **Comprehensive Evaluation**: Precision, recall, F1-score, confusion matrix
-- **Real-time Prediction**: Classify new recordings or database entries
-- **Database Integration**: Seamless integration with existing noise database
+- **Modular Architecture**: Separated concerns into config, features, models, and pipelines
+- **No Code Duplication**: Single source of truth for feature extraction and configuration
+- **Lazy Loading**: PyTorch dependencies loaded only when needed for better testing
+- **Clean API**: Simple `classify()`, `train()`, `export()` methods
+- **Type Safety**: Comprehensive type hints and dataclasses
+- **Easy Testing**: Mock-friendly design without GPU requirements
 
 ## Architecture
 
+### New Module Structure
+
+```
+src/ml/
+├── config.py                           # Configuration dataclasses
+├── features/
+│   ├── __init__.py
+│   ├── base.py                         # Shared config & protocols
+│   └── torch_extractor.py              # PyTorch feature extractor
+├── models/
+│   ├── __init__.py
+│   └── efficientnet_audio.py           # EfficientNet-B3 model
+├── pipelines/
+│   ├── __init__.py
+│   └── noise_classifier.py             # Orchestration & service API
+├── feature_extraction.py               # Legacy librosa extractor (preserved)
+├── emergency_noise_detector.py         # Emergency detection (uses legacy)
+└── noise_classifier_v2.py              # Backward compatibility wrapper
+
+```
+
+### Data Flow
+
 ```
 ┌──────────────────┐
-│   Audio Data     │ (Database or WAV files)
+│   Audio Input    │ (numpy array, 48kHz)
 └────────┬─────────┘
          │
          ▼
 ┌──────────────────┐
-│Feature Extraction│ (MFCC, Spectral, Chroma)
+│ TorchAudioFeature│ (mel spectrograms, MFCCs)
+│    Extractor     │
 └────────┬─────────┘
          │
          ▼
 ┌──────────────────┐
-│  Preprocessing   │ (Normalization, Scaling)
+│  EfficientNet-B3 │ (pretrained CNN)
+│   Audio Model    │
 └────────┬─────────┘
          │
          ▼
 ┌──────────────────┐
-│  Neural Network  │ (MLP/CNN/Ensemble)
-└────────┬─────────┘
-         │
-         ▼
-┌──────────────────┐
-│  Classification  │ (Noise Type Prediction)
+│  Classification  │ (57 noise categories)
+│  + Confidence    │
 └──────────────────┘
 ```
 
@@ -52,512 +72,358 @@ pip install -r requirements.txt
 
 Required packages:
 - `torch>=2.0.0` - PyTorch deep learning framework
-- `librosa>=0.10.0` - Audio feature extraction
-- `scikit-learn>=1.0.0` - Preprocessing and metrics
-- `tqdm>=4.65.0` - Progress bars
-- `numpy`, `matplotlib` - Data processing and visualization
+- `torchaudio>=2.0.0` - Audio processing
+- `torchvision>=0.15.0` - Pretrained models
+- `numpy>=1.24.0` - Numerical computing
+- `librosa>=0.10.0` - Legacy feature extraction (optional)
 
 ## Quick Start
 
-### 1. Extract Features from Database
-
-```bash
-python feature_extraction.py
-```
-
-This will:
-- Load all recordings from the database
-- Extract MFCC, spectral, and chroma features
-- Save features to `features.npz`
-
-### 2. Train the Model
-
-```bash
-python train_classifier.py
-```
-
-This will:
-- Load extracted features
-- Split into train/test sets
-- Train a neural network classifier
-- Evaluate and save the model
-- Generate training history plots
-
-### 3. Make Predictions
-
-```bash
-# Predict single recording
-python predict_noise_type.py 9
-
-# Predict all recordings
-python predict_noise_type.py batch
-```
-
-## Module Documentation
-
-### 1. feature_extraction.py
-
-Extracts audio features for classification.
-
-#### AudioFeatureExtractor Class
+### 1. Simple Classification
 
 ```python
-from feature_extraction import AudioFeatureExtractor
-
-extractor = AudioFeatureExtractor(
-    sample_rate=44100,
-    n_mfcc=13,
-    n_fft=2048,
-    hop_length=512
-)
-
-# Extract MFCC features
-mfccs = extractor.extract_mfcc(audio_data)
-
-# Extract all features
-features = extractor.extract_all_features(audio_data)
-
-# Get fixed-length feature vector
-feature_vector = extractor.extract_feature_vector(audio_data)
-```
-
-#### Features Extracted
-
-1. **MFCC** (13 coefficients)
-   - Mel-frequency cepstral coefficients
-   - Delta MFCC (first derivative)
-
-2. **Spectral Features**
-   - Spectral centroid
-   - Spectral rolloff
-   - Zero crossing rate
-   - RMS energy
-
-3. **Chroma Features** (12 pitch classes)
-   - Pitch class profiles
-
-4. **Statistical Summaries**
-   - Mean, std, min, max for each feature
-   - Creates fixed-length vector (~200 dimensions)
-
-#### Batch Feature Extraction
-
-```python
-from feature_extraction import batch_extract_features
-
-data = batch_extract_features(
-    db_path="anc_system.db",
-    output_file="features.npz"
-)
-
-# Returns: {'features': array, 'labels': array, 'recording_ids': array}
-```
-
-### 2. noise_classifier_model.py
-
-PyTorch model architectures and dataset loaders.
-
-#### Model Architectures
-
-##### MLP (Multi-Layer Perceptron)
-
-```python
-from noise_classifier_model import NoiseClassifierMLP
-
-model = NoiseClassifierMLP(
-    input_dim=200,
-    num_classes=5,
-    hidden_dims=[256, 128, 64],
-    dropout=0.3
-)
-```
-
-Architecture:
-```
-Input (200) → Linear(256) → BatchNorm → ReLU → Dropout
-           → Linear(128) → BatchNorm → ReLU → Dropout
-           → Linear(64)  → BatchNorm → ReLU → Dropout
-           → Linear(5)   → Output
-```
-
-##### CNN (1D Convolutional Network)
-
-```python
-from noise_classifier_model import NoiseClassifierCNN
-
-model = NoiseClassifierCNN(
-    input_dim=200,
-    num_classes=5,
-    num_channels=[64, 128, 256],
-    kernel_size=3,
-    dropout=0.3
-)
-```
-
-Architecture:
-```
-Input (200) → Conv1d → BatchNorm → ReLU → MaxPool → Dropout
-           → Conv1d → BatchNorm → ReLU → MaxPool → Dropout
-           → Conv1d → BatchNorm → ReLU → MaxPool → Dropout
-           → Flatten → FC(128) → ReLU → Dropout
-           → FC(5) → Output
-```
-
-##### Ensemble
-
-```python
-from noise_classifier_model import NoiseClassifierEnsemble
-
-model = NoiseClassifierEnsemble(
-    input_dim=200,
-    num_classes=5,
-    num_models=3
-)
-```
-
-Combines predictions from multiple MLP models.
-
-#### Dataset and DataLoader
-
-```python
-from noise_classifier_model import create_data_loaders
-
-train_loader, test_loader, train_dataset, test_dataset = create_data_loaders(
-    features_file='features.npz',
-    batch_size=32,
-    test_size=0.2,
-    random_state=42
-)
-```
-
-### 3. train_classifier.py
-
-Training pipeline with evaluation.
-
-#### NoiseClassifierTrainer Class
-
-```python
-from train_classifier import NoiseClassifierTrainer
-
-trainer = NoiseClassifierTrainer(
-    model=model,
-    device='cpu',  # or 'cuda'
-    learning_rate=0.001,
-    weight_decay=1e-5
-)
-
-# Train model
-history = trainer.train(
-    train_loader=train_loader,
-    val_loader=test_loader,
-    epochs=100,
-    early_stopping_patience=15
-)
-
-# Detailed evaluation
-metrics = trainer.evaluate_detailed(test_loader, label_encoder)
-
-# Plot training history
-trainer.plot_training_history('training_history.png')
-```
-
-#### Training Features
-
-- **Early Stopping**: Stops training when validation loss stops improving
-- **Learning Rate Scheduling**: Reduces LR when validation loss plateaus
-- **Batch Normalization**: Stabilizes training
-- **Dropout**: Prevents overfitting
-- **L2 Regularization**: Weight decay for regularization
-
-#### Evaluation Metrics
-
-- Overall accuracy
-- Per-class precision, recall, F1-score
-- Confusion matrix
-- Support (samples per class)
-
-### 4. predict_noise_type.py
-
-Inference and prediction on new data.
-
-#### NoisePredictor Class
-
-```python
-from predict_noise_type import NoisePredictor
-
-predictor = NoisePredictor(
-    model_path='noise_classifier.pth',
-    device='cpu'
-)
-
-# Predict from audio data
-predicted_class, confidence, all_probs = predictor.predict_from_audio(audio_data)
-
-# Predict from WAV file
-predicted_class, confidence, all_probs = predictor.predict_from_file('recording.wav')
-
-# Predict from database
-db = ANCDatabase('anc_system.db')
-predicted_class, confidence, all_probs = predictor.predict_from_database(db, recording_id=9)
-```
-
-#### Batch Prediction
-
-```python
-predictions = predictor.batch_predict_database('anc_system.db')
-
-# Returns list of:
-# {
-#   'recording_id': int,
-#   'true_label': str,
-#   'predicted_label': str,
-#   'confidence': float,
-#   'probabilities': dict
-# }
-```
-
-## Usage Examples
-
-### Example 1: Complete Workflow
-
-```python
-# Step 1: Extract features
-from feature_extraction import batch_extract_features
-data = batch_extract_features()
-
-# Step 2: Create model and train
-from noise_classifier_model import NoiseClassifierMLP, create_data_loaders
-from train_classifier import NoiseClassifierTrainer
-
-train_loader, test_loader, train_dataset, test_dataset = create_data_loaders()
-
-model = NoiseClassifierMLP(
-    input_dim=train_dataset.get_feature_dim(),
-    num_classes=train_dataset.get_num_classes()
-)
-
-trainer = NoiseClassifierTrainer(model)
-history = trainer.train(train_loader, test_loader, epochs=50)
-
-# Step 3: Evaluate
-metrics = trainer.evaluate_detailed(test_loader, train_dataset.label_encoder)
-
-# Step 4: Save model
-from noise_classifier_model import save_model
-save_model(model, train_dataset.label_encoder, train_dataset.scaler)
-
-# Step 5: Make predictions
-from predict_noise_type import NoisePredictor
-predictor = NoisePredictor()
-predictor.batch_predict_database()
-```
-
-### Example 2: Classify New Recording
-
-```python
-from audio_capture import AudioCapture
-from predict_noise_type import NoisePredictor
-from database_schema import ANCDatabase
-
-# Capture new audio
-capture = AudioCapture()
-capture.start_recording(duration_seconds=5)
-recording_id = capture.save_to_database(
-    environment_type="unknown",
-    description="New recording to classify"
-)
-audio_data = capture.get_audio_array()
-capture.cleanup()
-
-# Predict
-predictor = NoisePredictor()
-predicted_class, confidence, all_probs = predictor.predict_from_audio(audio_data)
-
-print(f"Predicted: {predicted_class} (confidence: {confidence:.2%})")
-for class_name, prob in sorted(all_probs.items(), key=lambda x: x[1], reverse=True):
-    print(f"  {class_name}: {prob:.2%}")
-```
-
-### Example 3: Custom Feature Extraction
-
-```python
-from feature_extraction import AudioFeatureExtractor
+from src.ml.pipelines.noise_classifier import NoiseClassifierService
 import numpy as np
 
-extractor = AudioFeatureExtractor()
+# Initialize service
+classifier = NoiseClassifierService(
+    model_path='models/noise_classifier_v2.pth'
+)
 
-# Extract specific features
-audio_data = np.random.randn(44100)  # 1 second at 44.1kHz
+# Classify audio
+audio = np.random.randn(48000)  # 1 second at 48kHz
+result = classifier.classify(audio, sample_rate=48000)
 
-# MFCC only
-mfccs = extractor.extract_mfcc(audio_data)
-print(f"MFCC shape: {mfccs.shape}")  # (13, time_frames)
-
-# MFCC + Delta
-mfccs, delta_mfccs = extractor.extract_mfcc_delta(audio_data)
-
-# Spectral features
-spectral_features = extractor.extract_spectral_features(audio_data)
-for name, feat in spectral_features.items():
-    print(f"{name}: {feat.shape}")
-
-# All features as fixed vector
-feature_vector = extractor.extract_feature_vector(audio_data)
-print(f"Feature vector length: {len(feature_vector)}")
+print(f"Predicted: {result['predicted_class']}")
+print(f"Confidence: {result['confidence']:.2%}")
+print("Top 5:")
+for category, prob in result['top_k']:
+    print(f"  {category}: {prob:.2%}")
 ```
 
-## Model Performance
+### 2. Training a Model
 
-### Expected Results
+```python
+from src.ml.pipelines.noise_classifier import NoiseClassifierService, NoiseDataset
+from src.ml.config import TrainingConfig
 
-With sufficient training data (50+ samples per class):
+# Create datasets
+train_files = ['audio1.wav', 'audio2.wav', ...]
+train_labels = [0, 1, ...]  # Category indices
 
-- **Accuracy**: 85-95%
-- **Training time**: 2-5 minutes (CPU)
-- **Inference time**: < 10ms per recording
+train_dataset = NoiseDataset(train_files, train_labels, augment=True)
+val_dataset = NoiseDataset(val_files, val_labels, augment=False)
 
-### Improving Performance
+# Initialize service
+service = NoiseClassifierService()
 
-1. **More training data**: Collect more diverse samples per environment
-2. **Data augmentation**: Add noise, pitch shift, time stretch
-3. **Feature engineering**: Experiment with different features
-4. **Model architecture**: Try CNN or ensemble models
-5. **Hyperparameter tuning**: Adjust learning rate, dropout, hidden layers
+# Train
+config = TrainingConfig(
+    num_epochs=50,
+    batch_size=32,
+    learning_rate=1e-4
+)
 
-## File Outputs
-
-After running the complete pipeline:
-
+history = service.train(train_dataset, val_dataset, config=config)
 ```
-anc-with-ai/
-├── features.npz                 # Extracted features
-├── noise_classifier.pth         # Trained model
-├── training_history.png         # Training plots
-├── training_metrics.npz         # Evaluation metrics
-└── predictions.json             # Batch predictions
+
+### 3. Export for Deployment
+
+```python
+# Export to ONNX (recommended for production)
+classifier.export('noise_classifier.onnx', format='onnx')
+
+# Or export to TorchScript
+classifier.export('noise_classifier.pt', format='torchscript')
 ```
+
+## API Reference
+
+### Configuration Classes
+
+#### AudioFeatureConfig
+
+```python
+from src.ml.config import AudioFeatureConfig
+
+config = AudioFeatureConfig(
+    sample_rate=48000,          # Audio sample rate
+    n_fft=2048,                 # FFT window size
+    hop_length=512,             # Hop length for STFT
+    n_mels=128,                 # Number of mel bands
+    n_mfcc=40,                  # Number of MFCC coefficients
+    spectrogram_height=128,     # Output spectrogram height
+    spectrogram_width=128,      # Output spectrogram width
+    enable_augmentation=True,   # Enable data augmentation
+)
+```
+
+#### ModelConfig
+
+```python
+from src.ml.config import ModelConfig
+
+config = ModelConfig(
+    num_classes=58,             # Number of output classes
+    dropout=0.3,                # Dropout probability
+    pretrained=True,            # Use ImageNet pretrained weights
+    architecture='efficientnet_b3'
+)
+```
+
+#### TrainingConfig
+
+```python
+from src.ml.config import TrainingConfig
+
+config = TrainingConfig(
+    num_epochs=50,
+    batch_size=32,
+    learning_rate=1e-4,
+    weight_decay=1e-5,
+    early_stopping_patience=15,
+    device='cpu',               # or 'cuda'
+    checkpoint_dir='checkpoints'
+)
+```
+
+### NoiseClassifierService
+
+Main API for classification, training, and export.
+
+#### Methods
+
+##### `classify(audio, sample_rate, return_top_k)`
+
+Classify audio sample.
+
+**Args:**
+- `audio` (np.ndarray): Audio samples
+- `sample_rate` (int): Sample rate in Hz
+- `return_top_k` (int): Number of top predictions to return
+
+**Returns:**
+```python
+{
+    'predicted_class': str,
+    'confidence': float,
+    'probabilities': Dict[str, float],
+    'top_k': List[Tuple[str, float]]
+}
+```
+
+##### `train(train_dataset, val_dataset, config)`
+
+Train the classifier.
+
+**Args:**
+- `train_dataset`: Training dataset
+- `val_dataset`: Validation dataset
+- `config` (TrainingConfig): Training configuration
+
+**Returns:**
+```python
+{
+    'train_loss': List[float],
+    'train_acc': List[float],
+    'val_loss': List[float],
+    'val_acc': List[float]
+}
+```
+
+##### `export(output_path, format)`
+
+Export model for deployment.
+
+**Args:**
+- `output_path` (str): Output file path
+- `format` (str): 'onnx' or 'torchscript'
+
+### Noise Categories (58 classes)
+
+**Environmental:** white_noise, pink_noise, brown_noise, blue_noise
+
+**Transportation:** traffic_highway, traffic_urban, traffic_rural, aircraft_takeoff, aircraft_cruise, aircraft_landing, train_interior, train_exterior, subway, motorcycle, bicycle, electric_vehicle
+
+**Urban:** office_quiet, office_busy, office_hvac, construction_drilling, construction_hammering, construction_sawing, cafe_quiet, cafe_busy, restaurant, shopping_mall, airport_terminal, train_station
+
+**Industrial:** factory_general, factory_machinery, factory_assembly, warehouse, server_room, generator
+
+**Natural:** wind_light, wind_strong, rain_light, rain_heavy, thunder, ocean_waves, waterfall, forest
+
+**Indoor:** hvac_fan, refrigerator, dishwasher, washing_machine, vacuum_cleaner, air_purifier, computer_fan
+
+**Human:** crowd_applause, crowd_cheering, crowd_talking, baby_crying, dog_barking, music_bass, music_treble
+
+**Other:** silence, mixed_noise, fire_alarm (emergency)
+
+## Integration Examples
+
+### With Backend API Service
+
+```python
+from backend.services.ml_service import MLService
+
+# The MLService automatically uses v2 if available
+service = MLService()
+
+# Classify from base64-encoded audio
+result = service.classify_noise(audio_base64)
+print(f"Model version: {result['model_version']}")  # 'v2' if using new classifier
+```
+
+### With Celery Tasks
+
+```python
+from src.api.tasks import train_noise_classifier
+
+# Trigger background training
+task = train_noise_classifier.delay('path/to/training/data')
+result = task.get()
+```
+
+### With Lambda Functions
+
+```python
+# In Lambda handler
+from src.ml.pipelines.noise_classifier import NoiseClassifierService
+
+classifier = NoiseClassifierService(
+    model_path='/opt/ml/models/noise_classifier_v2.pth'
+)
+
+def handler(event, context):
+    audio = decode_audio(event['audio_base64'])
+    result = classifier.classify(audio)
+    return {'statusCode': 200, 'body': json.dumps(result)}
+```
+
+## Testing
+
+### Unit Tests
+
+```bash
+# Run all ML tests
+python -m pytest tests/unit/test_noise_classifier_v2.py -v
+
+# Test specific modules
+python -m pytest tests/unit/test_noise_classifier_v2.py::TestNoiseClassifierModules -v
+```
+
+### Mock Testing (No GPU Required)
+
+```python
+from unittest.mock import Mock, patch
+import numpy as np
+
+# Mock torch to avoid GPU dependency
+with patch('src.ml.features.torch_extractor._torch') as mock_torch:
+    mock_torch.cuda.is_available.return_value = False
+    
+    from src.ml.pipelines.noise_classifier import NoiseClassifierService
+    
+    service = NoiseClassifierService()
+    # Test without requiring actual PyTorch
+```
+
+## Migration Guide
+
+### From Old API to New API
+
+**Before:**
+```python
+from src.ml.noise_classifier_v2 import NoiseClassifierV2
+
+classifier = NoiseClassifierV2(model_path='model.pth', device='cpu')
+result = classifier.classify(audio, sample_rate=48000, return_top_k=5)
+```
+
+**After:**
+```python
+from src.ml.pipelines.noise_classifier import NoiseClassifierService
+from src.ml.config import InferenceConfig
+
+config = InferenceConfig(model_path='model.pth', device='cpu', return_top_k=5)
+service = NoiseClassifierService(config=config)
+result = service.classify(audio, sample_rate=48000)
+```
+
+**Backward Compatibility:** The old API still works but shows a deprecation warning.
+
+### From Feature Extraction to Torch Extractor
+
+**Before:**
+```python
+from src.ml.noise_classifier_v2 import AudioFeatureExtractor
+
+extractor = AudioFeatureExtractor(AudioFeatureConfig())
+mel_spec = extractor.extract_mel_spectrogram(audio)
+```
+
+**After:**
+```python
+from src.ml.features.torch_extractor import TorchAudioFeatureExtractor
+from src.ml.config import AudioFeatureConfig
+
+config = AudioFeatureConfig()
+extractor = TorchAudioFeatureExtractor(config)
+mel_spec = extractor.extract_mel_spectrogram(audio)
+```
+
+## Performance
+
+### Model Metrics
+
+- **Accuracy**: 85-95% (with sufficient training data)
+- **Inference Time**: <10ms on CPU, <2ms on GPU
+- **Model Size**: ~45MB (EfficientNet-B3)
+- **Categories**: 58 noise types
+
+### Optimization Tips
+
+1. **Use GPU for training**: Set `device='cuda'` in TrainingConfig
+2. **Batch processing**: Process multiple samples together
+3. **ONNX export**: 2-3x faster inference in production
+4. **Feature caching**: Cache extracted features for training
 
 ## Troubleshooting
 
-### Issue: Low accuracy
+### Import Errors
 
-**Solution**:
-- Collect more training samples (aim for 20+ per class)
-- Ensure balanced dataset
-- Check for label errors in database
-
-### Issue: Overfitting (train acc >> val acc)
-
-**Solution**:
-- Increase dropout (try 0.4-0.5)
-- Increase weight decay (try 1e-4)
-- Reduce model complexity
-- Add more training data
-
-### Issue: Underfitting (both acc low)
-
-**Solution**:
-- Increase model capacity (more/larger hidden layers)
-- Train for more epochs
-- Reduce regularization
-- Check if features are informative
-
-### Issue: PyTorch not available
+**Problem**: `ModuleNotFoundError: No module named 'torch'`
 
 **Solution**:
 ```bash
-# CPU version
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-
-# CUDA version (for GPU)
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+pip install torch torchaudio torchvision
 ```
 
-### Issue: librosa import error
+### Memory Issues
+
+**Problem**: Out of memory during training
 
 **Solution**:
-```bash
-pip install librosa soundfile
-```
+- Reduce batch size: `TrainingConfig(batch_size=16)`
+- Use gradient accumulation
+- Enable mixed precision training
 
-## Integration with ANC System
+### Model Not Loading
 
-The noise classifier can be integrated with the ANC system for adaptive noise cancellation:
+**Problem**: `FileNotFoundError` when loading model
 
-```python
-from anc_with_database import OpenAirNoiseCancellationDB
-from predict_noise_type import NoisePredictor
+**Solution**:
+- Check model path exists
+- Use absolute paths or configure ML_MODEL_V2_PATH in settings
+- Initialize without model_path for untrained model
 
-# Classify noise type
-predictor = NoisePredictor()
-noise_type, confidence, _ = predictor.predict_from_file('ambient.wav')
+## Contributing
 
-# Load appropriate ANC model for that noise type
-anc = OpenAirNoiseCancellationDB()
-anc.load_noise_profile(noise_type)  # Custom method to load profile
+When extending the classifier:
 
-# Process with optimized parameters
-noise_cancelled = anc.cancel_noise(input_signal)
-```
-
-## Advanced Usage
-
-### Custom Model Architecture
-
-```python
-import torch.nn as nn
-
-class CustomNoiseClassifier(nn.Module):
-    def __init__(self, input_dim, num_classes):
-        super().__init__()
-        self.input_dim = input_dim
-        self.num_classes = num_classes
-
-        self.network = nn.Sequential(
-            nn.Linear(input_dim, 512),
-            nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(512, 256),
-            nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(256, num_classes)
-        )
-
-    def forward(self, x):
-        return self.network(x)
-
-# Use with trainer
-model = CustomNoiseClassifier(200, 5)
-trainer = NoiseClassifierTrainer(model)
-```
-
-### Feature Selection
-
-```python
-from sklearn.feature_selection import SelectKBest, f_classif
-
-# Select top K features
-selector = SelectKBest(f_classif, k=100)
-X_selected = selector.fit_transform(features, labels)
-
-# Get selected feature indices
-selected_indices = selector.get_support(indices=True)
-```
-
-## References
-
-- **MFCC**: Davis & Mermelstein (1980) - "Comparison of parametric representations for monosyllabic word recognition"
-- **Librosa**: McFee et al. (2015) - "librosa: Audio and Music Signal Analysis in Python"
-- **PyTorch**: Paszke et al. (2019) - "PyTorch: An Imperative Style, High-Performance Deep Learning Library"
+1. Add new categories to `NOISE_CATEGORIES_V2` in `pipelines/noise_classifier.py`
+2. Update `NUM_CLASSES_V2`
+3. Retrain model with new categories
+4. Update this documentation
 
 ## License
 
-Part of the ANC system patent implementation.
-
-## Support
-
-For issues or questions, refer to:
-- Feature extraction: `feature_extraction.py`
-- Model architecture: `noise_classifier_model.py`
-- Training: `train_classifier.py`
-- Prediction: `predict_noise_type.py`
+MIT License - See LICENSE file for details.

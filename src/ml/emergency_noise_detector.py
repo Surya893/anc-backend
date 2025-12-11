@@ -24,6 +24,8 @@ import os
 warnings.filterwarnings('ignore')
 
 # CRITICAL FIX: Proper imports with absolute paths
+# Note: Uses librosa-based feature extractor for emergency detection
+# For consistency with noise classifier v2, consider migrating to shared config
 try:
     # Try relative imports first
     from src.ml.feature_extraction import AudioFeatureExtractor
