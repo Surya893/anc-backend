@@ -2,7 +2,7 @@
 Authentication Middleware
 """
 
-from flask import request, jsonify, g
+from flask import request, jsonify, g, current_app
 from functools import wraps
 import jwt
 import logging
@@ -48,7 +48,7 @@ def require_auth(f):
 def verify_api_key(api_key):
     """Verify API key and return user"""
     try:
-        from database.models import User
+        from src.db.models import User
 
         user = User.query.filter_by(
             api_key=api_key,
@@ -70,8 +70,7 @@ def verify_api_key(api_key):
 def verify_jwt_token(token):
     """Verify JWT token and return user"""
     try:
-        from flask import current_app
-        from database.models import User
+        from src.db.models import User
 
         payload = jwt.decode(
             token,
@@ -107,7 +106,6 @@ def verify_jwt_token(token):
 
 def generate_jwt_token(user):
     """Generate JWT token for user"""
-    from flask import current_app
     from datetime import datetime, timedelta
 
     payload = {

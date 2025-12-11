@@ -2,13 +2,14 @@
 Audio Processing API Endpoints
 """
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from datetime import datetime
 import logging
 
-from services.anc_service import ANCService
-from services.ml_service import MLService
-from middleware.auth import require_auth
+from backend.services.anc_service import ANCService
+from backend.services.ml_service import MLService
+from backend.middleware.auth import require_auth
+from src.db.models import db, AudioSession
 
 logger = logging.getLogger(__name__)
 
@@ -137,9 +138,6 @@ def list_sessions():
     """Get all audio sessions for current user"""
     try:
         # Get sessions from database
-        from database.models import AudioSession
-        from flask import g
-
         sessions = AudioSession.query.filter_by(
             user_id=g.current_user.id
         ).order_by(AudioSession.created_at.desc()).limit(50).all()
@@ -160,9 +158,6 @@ def list_sessions():
 def get_session(session_id):
     """Get specific audio session details"""
     try:
-        from database.models import AudioSession
-        from flask import g
-
         session = AudioSession.query.filter_by(
             id=session_id,
             user_id=g.current_user.id

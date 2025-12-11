@@ -17,8 +17,8 @@ class ANCService:
 
     def __init__(self):
         """Initialize ANC service"""
-        from config.settings import Config
-        self.config = Config
+        from config import get_config
+        self.config = get_config()
         logger.info("ANC Service initialized")
 
     def process_audio(self, audio_data, sample_rate=48000, algorithm='nlms', intensity=1.0):

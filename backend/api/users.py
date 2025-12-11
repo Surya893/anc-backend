@@ -2,9 +2,10 @@
 User Management API Endpoints
 """
 
-from flask import Blueprint, request, jsonify
-from middleware.auth import require_auth
+from flask import Blueprint, request, jsonify, g
+from backend.middleware.auth import require_auth
 import logging
+from src.db.models import db
 
 logger = logging.getLogger(__name__)
 
