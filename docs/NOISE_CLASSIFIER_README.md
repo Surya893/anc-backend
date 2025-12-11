@@ -401,10 +401,97 @@ pip install torch torchaudio torchvision
 
 **Problem**: Out of memory during training
 
-**Solution**:
-- Reduce batch size: `TrainingConfig(batch_size=16)`
-- Use gradient accumulation
-- Enable mixed precision training
+# Process with optimized parameters
+noise_cancelled = anc.cancel_noise(input_signal)
+```
+
+## Integration with Flask Blueprint Architecture
+
+The noise classifier is now integrated with the refactored Flask blueprint API:
+
+### Using the MLService
+
+```python
+from backend.services.ml_service import MLService
+
+# Initialize the ML service
+ml_service = MLService()
+
+# Classify noise from audio data
+result = ml_service.classify_noise(
+    audio_data=base64_encoded_audio,
+    sample_rate=48000
+)
+
+# Result structure:
+# {
+#     'noise_type': 'office',           # Predicted noise class
+#     'confidence': 0.95,               # Confidence score
+#     'all_predictions': {              # All class probabilities
+#         'office': 0.95,
+#         'traffic': 0.03,
+#         'music': 0.02
+#     }
+# }
+```
+
+### Flask API Endpoint
+
+The classifier is exposed via the Flask blueprint API:
+
+```bash
+# Classify noise type
+curl -X POST http://localhost:5000/api/audio/classify \
+  -H "Authorization: Bearer token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "audio_data": "base64encodedaudio",
+    "sample_rate": 48000
+  }'
+```
+
+### Testing the Classifier
+
+The test suite includes comprehensive tests for the classifier:
+
+```bash
+# Run classifier tests
+pytest tests/unit/test_flask_blueprints.py::TestAudioBlueprint::test_classify_noise_success -v
+
+# Run ML service tests
+pytest -m ml
+```
+
+## Advanced Usage
+
+### Custom Model Architecture
+
+```python
+import torch.nn as nn
+
+class CustomNoiseClassifier(nn.Module):
+    def __init__(self, input_dim, num_classes):
+        super().__init__()
+        self.input_dim = input_dim
+        self.num_classes = num_classes
+
+        self.network = nn.Sequential(
+            nn.Linear(input_dim, 512),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(512, 256),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(256, num_classes)
+        )
+
+    def forward(self, x):
+        return self.network(x)
+
+# Use with trainer
+model = CustomNoiseClassifier(200, 5)
+trainer = NoiseClassifierTrainer(model)
+```
 
 ### Model Not Loading
 
