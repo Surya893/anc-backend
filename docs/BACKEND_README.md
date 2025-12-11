@@ -39,24 +39,64 @@ Enterprise-grade Active Noise Cancellation Platform with real-time audio process
 
 ## 📂 Project Structure
 
+### Modular Flask Blueprint Architecture
+
 ```
-anc-with-ai/
-├── server.py                    # Main API server
-├── config.py                    # Configuration management
-├── models.py                    # SQLAlchemy database models
-├── audio_processor.py           # Real-time audio processing
-├── websocket_server.py          # WebSocket handlers
-├── tasks.py                     # Celery background tasks
-├── wsgi.py                      # Production WSGI entry point
-├── advanced_anc_algorithms.py   # ANC algorithms (LMS, NLMS, RLS)
-├── feature_extraction.py        # Audio feature extraction
-├── predict_sklearn.py           # ML noise classification
-├── emergency_noise_detector.py  # Emergency sound detection
-├── requirements.txt             # Python dependencies
-├── docker-compose.yml           # Local development stack
-├── Dockerfile                   # Container image
-└── README.md                    # This file
+backend/
+├── server.py                    # Flask app factory + main entry point
+├── api/                         # API blueprint modules
+│   ├── __init__.py
+│   ├── audio.py                 # Audio processing endpoints (process, classify, emergency-detect)
+│   ├── health.py                # Health check endpoints
+│   ├── sessions.py              # Session management endpoints
+│   └── users.py                 # User management endpoints
+├── services/                    # Business logic services
+│   ├── anc_service.py           # ANC processing service (NLMS, LMS, RLS filters)
+│   └── ml_service.py            # ML inference service (classification, emergency detection)
+├── middleware/                  # Request/response middleware
+│   ├── auth.py                  # JWT + API key authentication
+│   └── logging.py               # Request logging middleware
+└── websocket.py                 # WebSocket event handlers
+
+src/api/
+├── server.py                    # Main production API server
+├── api_server.py                # Additional API implementations
+├── tasks.py                     # Celery background task definitions
+├── websocket_server.py          # WebSocket server implementation
+└── websocket_streaming.py       # Real-time audio streaming
+
+src/ml/
+├── noise_classifier_v2.py       # ML noise classification model
+├── emergency_noise_detector.py  # Emergency sound detector
+└── feature_extraction.py        # Audio feature extraction
+
+src/utils/
+└── audio_capture.py             # Audio capture utilities
+
+src/web/
+├── app.py                       # Flask web UI application
+└── main.py                      # Web UI entry point
 ```
+
+### Celery Task Structure
+
+```
+src/api/tasks.py                 # All Celery task definitions
+├── process_audio_file()         # Async audio file processing
+├── process_audio_chunk()        # Individual chunk processing
+├── classify_audio_batch()       # Batch noise classification
+├── detect_emergency_batch()     # Batch emergency detection
+├── train_model()                # Background model training
+├── cleanup_old_sessions()       # Maintenance: cleanup sessions
+└── generate_report()            # Analytics: report generation
+```
+
+### Core Dependencies
+
+- `requirements.txt` - Python dependencies
+- `docker-compose.yml` - Local development stack
+- `Dockerfile` - Container image
+- `wsgi.py` - Production WSGI entry point
 
 ## 🚀 Quick Start
 
@@ -410,7 +450,19 @@ Logs written to `logs/anc_platform.log` with rotation:
 pytest
 
 # With coverage
-pytest --cov=. --cov-report=html
+pytest --cov=backend --cov=src --cov-report=html
+
+# Flask blueprint tests
+pytest tests/unit/test_flask_blueprints.py -v
+
+# Celery task tests (eager mode)
+pytest tests/unit/test_celery_tasks.py -v
+
+# Run tests by marker
+pytest -m flask       # API endpoint tests
+pytest -m celery      # Background task tests
+pytest -m auth        # Authentication tests
+pytest -m audio       # Audio processing tests
 
 # Specific test file
 pytest tests/test_api.py
@@ -418,6 +470,37 @@ pytest tests/test_api.py
 # With verbose output
 pytest -v
 ```
+
+### Test Fixtures and conftest.py
+
+The test suite provides comprehensive fixtures in `tests/conftest.py`:
+
+**Flask Testing:**
+```python
+def test_audio_endpoint(client, mock_user, mock_anc_service):
+    """Test audio processing endpoint."""
+    with patch('backend.api.audio.anc_service', mock_anc_service):
+        response = client.post(
+            '/api/audio/process',
+            data=json.dumps({'audio_data': 'base64...'}),
+            headers={'Authorization': 'Bearer token'}
+        )
+        assert response.status_code == 200
+```
+
+**Celery Task Testing (Eager Mode):**
+```python
+@pytest.mark.celery
+def test_audio_processing_task(mock_celery_task):
+    """Test Celery task with eager mode."""
+    mock_celery_task.update_state(
+        state='PROGRESS',
+        meta={'current': 1, 'total': 100}
+    )
+    assert mock_celery_task.update_state.called
+```
+
+See [tests/README.md](../tests/README.md) for detailed testing documentation.
 
 ## 🚢 Deployment
 

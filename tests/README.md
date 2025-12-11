@@ -6,6 +6,8 @@ Comprehensive test suite for the ANC Platform including unit tests, integration 
 
 ```
 tests/
+├── conftest.py                # Shared pytest fixtures and configuration
+│
 ├── unit/                      # Unit tests (fast, isolated)
 │   ├── test_audio_system.py
 │   ├── test_emergency_detection.py
@@ -13,12 +15,17 @@ tests/
 │   ├── test_iot_connection.py
 │   ├── test_device_shadow_sync.py
 │   ├── test_telemetry_publisher.py
-│   └── test_train_sklearn_demo.py
+│   ├── test_train_sklearn_demo.py
+│   ├── test_flask_blueprints.py     # NEW: Flask API blueprint tests
+│   └── test_celery_tasks.py         # NEW: Celery background task tests
 │
 ├── integration/               # Integration tests (slower)
 │   ├── verify_integration.py
 │   ├── verify_playback_ready.py
 │   └── verify_flask_app.py
+│
+├── validation/                # Validation tests
+│   └── (validation scripts)
 │
 └── demos/                     # Demo scripts and examples
     ├── simple_anti_noise_demo.py
@@ -73,14 +80,29 @@ pytest tests/unit/test_iot_connection.py::TestIoTConnection::test_connect_succes
 # Run only unit tests
 pytest -m unit
 
-# Run only IoT-related tests
-pytest -m iot
+# Run only Flask API tests
+pytest -m flask
+
+# Run only Celery task tests
+pytest -m celery
+
+# Run authentication tests
+pytest -m auth
+
+# Run audio processing tests
+pytest -m audio
+
+# Run ML tests (requires numpy, sklearn, etc.)
+pytest -m ml
+
+# Run backend integration tests
+pytest -m integration_backend
 
 # Skip slow tests
 pytest -m "not slow"
 
-# Run ML tests (requires numpy, sklearn, etc.)
-pytest -m ml
+# Combine markers (Flask and audio tests)
+pytest -m "flask and audio"
 ```
 
 ### Continuous Integration
@@ -110,10 +132,41 @@ Fast, isolated tests that don't require external dependencies.
 - Device shadow synchronization
 - Telemetry publishing
 - Training script utilities
+- **Flask API blueprints** (auth, audio, sessions, users) - NEW
+- **Celery background tasks** (audio processing, maintenance, ML services) - NEW
+
+**Flask Blueprints Tests** (`test_flask_blueprints.py`):
+- Authentication middleware (JWT tokens, API keys)
+- Audio processing endpoints (process, classify, detect emergency)
+- Session management endpoints
+- User management endpoints
+- App factory pattern validation
+- Service mocking and dependency injection
+
+**Celery Tasks Tests** (`test_celery_tasks.py`):
+- Audio file processing with progress tracking
+- Chunk-based processing with metadata updates
+- Maintenance and cleanup tasks
+- Database interactions and transaction handling
+- ML service wrapper and inference tasks
+- Task state management (pending, progress, success, failure)
 
 **Run:**
 ```bash
+# All unit tests
 pytest tests/unit/ -v
+
+# Flask tests only
+pytest tests/unit/test_flask_blueprints.py -v
+
+# Celery tests only
+pytest tests/unit/test_celery_tasks.py -v
+
+# Using markers
+pytest -m flask
+pytest -m celery
+pytest -m audio
+pytest -m auth
 ```
 
 ### Integration Tests (`tests/integration/`)
@@ -141,9 +194,79 @@ python tests/demos/simple_anti_noise_demo.py
 python tests/demos/realtime_anti_noise_output.py
 ```
 
+## Fixtures and conftest.py
+
+The `conftest.py` file provides shared fixtures for all tests:
+
+### Flask Fixtures
+
+```python
+@pytest.fixture(scope='function')
+def flask_app():
+    """Create a Flask app instance for testing with app factory pattern."""
+    # Returns a configured test Flask app
+
+@pytest.fixture(scope='function')
+def client(flask_app):
+    """Create a Flask test client for making HTTP requests."""
+    # Returns test client for the app
+
+@pytest.fixture
+def mock_user():
+    """Create a mock user object for authentication tests."""
+    # Returns a mock User model with test data
+```
+
+### Audio Data Fixtures
+
+```python
+@pytest.fixture
+def sample_audio_data():
+    """Generate synthetic audio data (base64-encoded)."""
+    # Returns 1 second of 440 Hz tone as base64
+
+@pytest.fixture
+def sample_audio_raw():
+    """Generate raw audio numpy array."""
+    # Returns numpy audio array
+
+@pytest.fixture
+def emergency_audio_data():
+    """Generate synthetic emergency sound (fire alarm-like)."""
+    # Returns emergency sound as base64
+```
+
+### Service Fixtures
+
+```python
+@pytest.fixture
+def mock_anc_service():
+    """Create a mock ANCService for testing."""
+    # Returns mocked ANCService with process_audio
+
+@pytest.fixture
+def mock_ml_service():
+    """Create a mock MLService for testing."""
+    # Returns mocked MLService with classify_noise and detect_emergency
+```
+
+### Celery Fixtures
+
+```python
+@pytest.fixture(scope='session')
+def celery_config():
+    """Configure Celery for testing with eager mode."""
+    # Returns Celery config with task_always_eager=True
+
+@pytest.fixture
+def mock_celery_task():
+    """Create a mock Celery task for testing."""
+    # Returns mock task with update_state method
+```
+
 ## Writing New Tests
 
-### Unit Test Template
+### Unit Test Template (Modern)
 
 ```python
 """
@@ -153,6 +276,78 @@ Unit Tests for [Module Name]
 Description of what this test module covers.
 """
 
+import pytest
+from unittest.mock import Mock, MagicMock, patch
+
+pytestmark = [pytest.mark.unit]  # Mark all tests in this module
+
+
+@pytest.mark.flask
+class TestMyFeature:
+    """Test [ClassName] class."""
+
+    def test_[feature_name](self, client, mock_user):
+        """Test [specific feature]."""
+        # Arrange
+        with patch('module.Service') as mock_service:
+            # Setup mocks
+            pass
+
+        # Act
+        response = client.get('/api/endpoint')
+
+        # Assert
+        assert response.status_code == 200
+```
+
+### Flask Test Template
+
+```python
+@pytest.mark.flask
+class TestFlaskEndpoint:
+    """Test Flask API endpoints."""
+
+    def test_endpoint_success(self, client, mock_user, mock_anc_service):
+        """Test successful endpoint request."""
+        with patch('backend.api.audio.anc_service', mock_anc_service):
+            response = client.post(
+                '/api/audio/process',
+                data=json.dumps({'audio_data': 'test'}),
+                content_type='application/json',
+                headers={'Authorization': 'Bearer test-token'}
+            )
+            assert response.status_code in [200, 401]
+
+    def test_endpoint_auth_required(self, client):
+        """Test endpoint requires authentication."""
+        response = client.get('/api/protected')
+        assert response.status_code == 401
+```
+
+### Celery Task Test Template
+
+```python
+@pytest.mark.celery
+class TestCeleryTask:
+    """Test Celery background task."""
+
+    @patch('src.api.tasks.config')
+    def test_task_with_config(self, mock_config, mock_celery_task):
+        """Test task with mocked configuration."""
+        mock_config.AUDIO_CHUNK_SIZE = 4096
+        
+        # Simulate task execution
+        mock_celery_task.update_state(
+            state='PROGRESS',
+            meta={'current': 1, 'total': 10}
+        )
+        
+        assert mock_celery_task.update_state.called
+```
+
+## Old Unit Test Template (unittest style)
+
+```python
 import pytest
 import unittest
 from unittest.mock import Mock, MagicMock, patch
@@ -179,10 +374,6 @@ class Test[ModuleName](unittest.TestCase):
 
         # Assert
         self.assertEqual(expected, actual)
-
-
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
 ```
 
 ### Integration Test Template
@@ -317,6 +508,29 @@ pytest --cov=src --cov=cloud --cov-report=xml
 | ML Models | TBD | >70% |
 | IoT Integration | TBD | >75% |
 | API Endpoints | TBD | >80% |
+| Flask Blueprints | NEW | >85% |
+| Celery Tasks | NEW | >80% |
+| Authentication Middleware | NEW | >85% |
+
+### Coverage Configuration
+
+Coverage is configured in `pytest.ini` and `.coveragerc`. To generate a coverage report:
+
+```bash
+# Generate coverage report in terminal
+pytest --cov=backend --cov=src --cov-report=term-missing
+
+# Generate HTML coverage report
+pytest --cov=backend --cov=src --cov-report=html
+open htmlcov/index.html
+
+# Generate XML report for CI
+pytest --cov=backend --cov=src --cov-report=xml
+
+# Coverage badge (if using codecov)
+# Add to README.md:
+# [![codecov](https://codecov.io/gh/[org]/[repo]/branch/main/graph/badge.svg)](https://codecov.io/gh/[org]/[repo])
+```
 
 ## Continuous Integration
 
@@ -338,11 +552,41 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          pip install pytest pytest-cov
-      - name: Run tests
-        run: pytest --cov=src --cov-report=xml
+          pip install pytest pytest-cov pytest-mock
+      - name: Run unit tests
+        run: pytest tests/unit/ -v --cov=backend --cov=src --cov-report=term-missing
+      - name: Run Flask API tests
+        run: pytest tests/unit/test_flask_blueprints.py -v -m flask
+      - name: Run Celery task tests
+        run: pytest tests/unit/test_celery_tasks.py -v -m celery
+      - name: Run integration tests
+        run: pytest tests/integration/ -v
+      - name: Generate coverage report
+        run: pytest --cov=backend --cov=src --cov-report=xml --cov-report=html
       - name: Upload coverage
         uses: codecov/codecov-action@v2
+```
+
+### Running Tests Locally
+
+For development, use the `Makefile` target or run directly:
+
+```bash
+# Run all tests
+pytest
+
+# Run specific test suites
+pytest tests/unit/test_flask_blueprints.py  # Flask tests
+pytest tests/unit/test_celery_tasks.py      # Celery tests
+
+# Run tests with coverage
+pytest --cov=backend --cov=src --cov-report=html
+
+# Run fast tests only (skip slow markers)
+pytest -m "not slow"
+
+# Run Flask + auth tests only
+pytest -m "flask and auth"
 ```
 
 ## Troubleshooting
