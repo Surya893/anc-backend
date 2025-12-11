@@ -167,7 +167,7 @@ def batch_process_files(self, file_paths: list, apply_anc: bool = True):
 @celery_app.task(name='tasks.train_noise_classifier')
 def train_noise_classifier(training_data_dir: str):
     """
-    Train or retrain the noise classification model
+    Train or retrain the noise classification model (legacy sklearn version)
 
     Args:
         training_data_dir: Directory containing training audio files
@@ -176,7 +176,7 @@ def train_noise_classifier(training_data_dir: str):
         dict: Training results and metrics
     """
     try:
-        logger.info(f"Training noise classifier from: {training_data_dir}")
+        logger.info(f"Training noise classifier (legacy) from: {training_data_dir}")
 
         from sklearn.ensemble import RandomForestClassifier
         from sklearn.preprocessing import StandardScaler
@@ -260,11 +260,115 @@ def train_noise_classifier(training_data_dir: str):
             'num_features': X.shape[1],
             'categories': list(np.unique(y)),
             'model_path': str(model_path),
-            'scaler_path': str(scaler_path)
+            'scaler_path': str(scaler_path),
+            'model_version': 'v1'
         }
 
     except Exception as e:
         logger.error(f"Error training classifier: {e}", exc_info=True)
+        raise
+
+
+@celery_app.task(name='tasks.train_noise_classifier_v2')
+def train_noise_classifier_v2(training_data_dir: str, output_model_path: str = None):
+    """
+    Train or retrain the noise classification model v2 (deep learning)
+
+    Args:
+        training_data_dir: Directory containing training audio files organized by category
+        output_model_path: Optional output path for trained model
+
+    Returns:
+        dict: Training results and metrics
+    """
+    try:
+        logger.info(f"Training noise classifier v2 from: {training_data_dir}")
+
+        from src.ml.pipelines.noise_classifier import (
+            NoiseClassifierService,
+            NoiseDataset,
+            NOISE_CATEGORIES_V2
+        )
+        from src.ml.config import TrainingConfig
+        
+        # Build category to index mapping
+        category_to_idx = {cat: idx for idx, cat in enumerate(NOISE_CATEGORIES_V2)}
+        
+        # Collect audio files and labels
+        train_files = []
+        train_labels = []
+        
+        training_path = Path(training_data_dir)
+        for category_dir in training_path.iterdir():
+            if not category_dir.is_dir():
+                continue
+            
+            category = category_dir.name
+            if category not in category_to_idx:
+                logger.warning(f"Unknown category: {category}, skipping")
+                continue
+            
+            label_idx = category_to_idx[category]
+            logger.info(f"Loading category: {category} (idx={label_idx})")
+            
+            for audio_file in category_dir.glob('*.wav'):
+                train_files.append(str(audio_file))
+                train_labels.append(label_idx)
+        
+        logger.info(f"Loaded {len(train_files)} audio files across {len(set(train_labels))} categories")
+        
+        # Split into train and validation
+        from sklearn.model_selection import train_test_split
+        train_files_split, val_files_split, train_labels_split, val_labels_split = train_test_split(
+            train_files, train_labels, test_size=0.2, random_state=42, stratify=train_labels
+        )
+        
+        # Create datasets
+        train_dataset = NoiseDataset(train_files_split, train_labels_split, augment=True)
+        val_dataset = NoiseDataset(val_files_split, val_labels_split, augment=False)
+        
+        # Initialize service
+        service = NoiseClassifierService()
+        
+        # Training configuration
+        train_config = TrainingConfig(
+            num_epochs=50,
+            batch_size=32,
+            learning_rate=1e-4,
+            early_stopping_patience=15,
+            device='cuda' if config.get('USE_GPU', False) else 'cpu',
+            checkpoint_dir=str(Path(output_model_path or 'checkpoints').parent)
+        )
+        
+        # Train
+        logger.info(f"Starting training on {train_config.device}")
+        history = service.train(train_dataset, val_dataset, config=train_config)
+        
+        # Save final model
+        if output_model_path:
+            from src.ml.models.efficientnet_audio import save_model_checkpoint
+            save_model_checkpoint(service.model, output_model_path, {
+                'final_train_acc': history['train_acc'][-1],
+                'final_val_acc': history['val_acc'][-1],
+                'epochs_trained': len(history['train_acc'])
+            })
+            logger.info(f"Final model saved to: {output_model_path}")
+        
+        return {
+            'status': 'completed',
+            'train_accuracy': float(history['train_acc'][-1]),
+            'val_accuracy': float(history['val_acc'][-1]),
+            'num_samples': len(train_files),
+            'num_train': len(train_files_split),
+            'num_val': len(val_files_split),
+            'categories': list(set(train_labels)),
+            'epochs_trained': len(history['train_acc']),
+            'model_path': str(output_model_path) if output_model_path else None,
+            'model_version': 'v2'
+        }
+        
+    except Exception as e:
+        logger.error(f"Error training classifier v2: {e}", exc_info=True)
         raise
 
 

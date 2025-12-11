@@ -247,7 +247,11 @@ def encode_audio(audio_array: np.ndarray) -> str:
 
 def classify_noise(audio: np.ndarray) -> Dict:
     """
-    Classify noise type using SageMaker ML model
+    Classify noise type using ML model
+
+    Can use either:
+    1. Local NoiseClassifierService (if model available)
+    2. SageMaker endpoint (fallback)
 
     Returns:
         {
@@ -257,25 +261,52 @@ def classify_noise(audio: np.ndarray) -> Dict:
         }
     """
     try:
-        # Prepare audio features (MFCC, spectral features, etc.)
-        # For simplicity, using raw audio (in production, extract features)
-        payload = {
-            'audio': audio.flatten().tolist()[:4800],  # First 100ms
-            'sample_rate': SAMPLE_RATE
-        }
+        # Try local classifier first (faster, no network call)
+        try:
+            from src.ml.pipelines.noise_classifier import NoiseClassifierService
+            
+            # Check if model exists in Lambda layer
+            model_path = '/opt/ml/models/noise_classifier_v2.pth'
+            if os.path.exists(model_path):
+                classifier = NoiseClassifierService(model_path=model_path, device='cpu')
+                result = classifier.classify(audio, sample_rate=SAMPLE_RATE, return_top_k=3)
+                
+                return {
+                    'noise_type': result['predicted_class'],
+                    'confidence': result['confidence'],
+                    'probabilities': result['probabilities']
+                }
+        except ImportError:
+            logger.debug("Local classifier not available, falling back to SageMaker")
+        except Exception as e:
+            logger.warning(f"Local classifier failed: {e}, falling back to SageMaker")
 
-        response = sagemaker_runtime.invoke_endpoint(
-            EndpointName=SAGEMAKER_ENDPOINT,
-            ContentType='application/json',
-            Body=json.dumps(payload)
-        )
+        # Fallback to SageMaker endpoint
+        if SAGEMAKER_ENDPOINT:
+            payload = {
+                'audio': audio.flatten().tolist()[:4800],  # First 100ms
+                'sample_rate': SAMPLE_RATE
+            }
 
-        result = json.loads(response['Body'].read().decode())
+            response = sagemaker_runtime.invoke_endpoint(
+                EndpointName=SAGEMAKER_ENDPOINT,
+                ContentType='application/json',
+                Body=json.dumps(payload)
+            )
 
+            result = json.loads(response['Body'].read().decode())
+
+            return {
+                'noise_type': result.get('predicted_class', 'unknown'),
+                'confidence': result.get('confidence', 0.0),
+                'probabilities': result.get('probabilities', {})
+            }
+        
+        # No classification available
         return {
-            'noise_type': result.get('predicted_class', 'unknown'),
-            'confidence': result.get('confidence', 0.0),
-            'probabilities': result.get('probabilities', {})
+            'noise_type': 'unknown',
+            'confidence': 0.0,
+            'probabilities': {}
         }
 
     except Exception as e:
