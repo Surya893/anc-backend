@@ -4,25 +4,36 @@ metadata:
   name: anc-config
   namespace: anc-platform
 data:
-  # Application configuration
-  SAMPLE_RATE: "44100"
-  CHUNK_SIZE: "1024"
-  FILTER_LENGTH: "512"
-  ALGORITHM: "nlms"
+  # Infrastructure - from Terraform outputs
+  redis_endpoint: "elasticache.default.svc.cluster.local"  # Update from terraform output
+  redis_port: "6379"
+  sessions_table: "anc-sessions"  # Update from terraform output
+  connections_table: "anc-connections"  # Update from terraform output
+  audio_queue_url: "https://sqs.us-east-1.amazonaws.com/123456789/anc-audio-queue"  # Update from terraform output
+  output_queue_url: "https://sqs.us-east-1.amazonaws.com/123456789/anc-output-queue"  # Update from terraform output
+
+  # Audio processing
+  sample_rate: "48000"
+  chunk_size: "2048"
+  filter_length: "512"
+  algorithm: "hybrid_nlms_rls"
+  
+  # ML Model configuration
+  enable_adaptive_learning: "true"
+  enable_spatial_audio: "false"
+  confidence_threshold: "0.7"
+  emergency_threshold: "0.9"
   
   # Feature extraction
-  MFCC_COEFFICIENTS: "13"
-  N_FFT: "2048"
-  HOP_LENGTH: "512"
-  
-  # Model configuration
-  CONFIDENCE_THRESHOLD: "0.7"
-  EMERGENCY_THRESHOLD: "0.9"
+  mfcc_coefficients: "13"
+  n_fft: "2048"
+  hop_length: "512"
   
   # System limits
-  MAX_RECORDING_DURATION: "300"
-  MAX_CONCURRENT_SESSIONS: "100"
+  max_recording_duration: "3600"
+  max_concurrent_sessions: "1000"
+  max_chunk_size: "4096"
   
   # Logging
-  LOG_LEVEL: "INFO"
-  LOG_FORMAT: "json"
+  log_level: "INFO"
+  log_format: "json"
