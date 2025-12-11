@@ -38,14 +38,52 @@ spec:
         env:
         - name: FLASK_ENV
           value: "production"
-        - name: DATABASE_PATH
-          value: "/data/anc_system.db"
-        - name: MODEL_PATH
-          value: "/models/noise_classifier_sklearn.joblib"
+        - name: FLASK_APP
+          value: "wsgi:app"
         - name: LOG_LEVEL
           value: "INFO"
         - name: PYTHONUNBUFFERED
           value: "1"
+        - name: REDIS_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: anc-config
+              key: redis_endpoint
+        - name: REDIS_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: anc-config
+              key: redis_port
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: anc-secrets
+              key: database_url
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: anc-secrets
+              key: jwt_secret
+        - name: SESSIONS_TABLE
+          valueFrom:
+            configMapKeyRef:
+              name: anc-config
+              key: sessions_table
+        - name: CONNECTIONS_TABLE
+          valueFrom:
+            configMapKeyRef:
+              name: anc-config
+              key: connections_table
+        - name: AUDIO_QUEUE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: anc-config
+              key: audio_queue_url
+        - name: OUTPUT_QUEUE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: anc-config
+              key: output_queue_url
         resources:
           requests:
             memory: "512Mi"

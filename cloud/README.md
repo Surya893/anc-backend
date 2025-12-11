@@ -2,464 +2,474 @@
 
 Complete cloud infrastructure for real-time Active Noise Cancellation processing on AWS.
 
-## Architecture
+## Architecture Overview
 
 This infrastructure processes incoming audio in real-time, applies phase-inverted signals for noise cancellation, and streams processed audio back to clients with <40ms total latency.
 
 ### Key Features
 
 - ✅ **Real-time Audio Processing**: WebSocket-based streaming with <10ms cloud latency
-- ✅ **NLMS Adaptive Filtering**: Cloud-based implementation of Normalized Least Mean Squares algorithm
+- ✅ **Hybrid NLMS+RLS Filtering**: Cloud-based adaptive noise cancellation algorithm
 - ✅ **Phase Inversion**: Generate anti-noise signals in real-time
-- ✅ **ML Classification**: Identify noise types for adaptive ANC (95.83% accuracy)
+- ✅ **ML Classification**: Identify noise types for adaptive ANC (50+ noise categories)
+- ✅ **Emergency Detection**: Automatic detection and alerting for emergency sounds
 - ✅ **Auto-Scaling**: Handle 1000+ concurrent audio streams
-- ✅ **Cost-Optimized**: Serverless architecture with spot instances
-- ✅ **Production-Ready**: Monitoring, logging, and alerting built-in
+- ✅ **Cost-Optimized**: Serverless architecture with intelligent instance selection
+- ✅ **Production-Ready**: Monitoring, logging, alerting, and distributed tracing
 
-## Components
+## Infrastructure Components
 
 ### Compute Layer
-- **Lambda Functions**: Serverless audio processing
+- **Lambda Functions**: Serverless audio processing (Python 3.11)
   - `audio_receiver`: Receive and validate incoming audio chunks
-  - `anc_processor`: Apply NLMS filtering and phase inversion
-  - `audio_sender`: Stream processed audio back to clients
-  - `websocket_connect/disconnect`: Connection management
+  - `anc_processor_v2`: Apply hybrid NLMS+RLS filtering and phase inversion
+  - `audio_sender`: Stream processed audio back to clients via WebSocket
+  - `websocket_connect/disconnect`: WebSocket connection lifecycle management
+  - Common helpers: Shared utilities for Redis, metrics, audio encoding
 
-- **SageMaker**: ML model for noise classification
-- **ECS Fargate**: Heavy processing tasks (batch jobs)
+- **SageMaker**: ML endpoint for noise classification (50+ noise types)
+- **ECS Fargate**: Batch processing and heavy ML jobs (optional)
 
 ### Storage Layer
-- **S3**: Raw and processed audio files
-- **RDS PostgreSQL**: User data, analytics, audit logs
-- **DynamoDB**: Real-time session state
-- **ElastiCache Redis**: Filter coefficients cache
+- **S3 Buckets**: Raw and processed audio files with lifecycle policies
+- **RDS PostgreSQL**: User data, session analytics, audit logs (Multi-AZ in production)
+- **DynamoDB**: Real-time session state and connection management (auto-scaling)
+- **ElastiCache Redis**: Filter coefficients cache and session state (Redis cluster)
 
 ### API Layer
-- **API Gateway REST**: HTTP endpoints for uploads/downloads
+- **API Gateway REST**: HTTP endpoints for metadata, session management, analytics
 - **API Gateway WebSocket**: Real-time bidirectional audio streaming
-- **CloudFront**: Global CDN for low-latency access
+- **CloudFront CDN**: Global edge locations for low-latency access
 
 ### IoT & Device Management
-- **AWS IoT Core**: Device connectivity and messaging
-- **Device Shadow**: State synchronization between devices and cloud
-- **IoT Rules Engine**: Data routing and transformation
-- **IoT Analytics**: Device telemetry analytics
+- **AWS IoT Core**: Device connectivity and secure messaging
+- **Device Shadow**: State synchronization between edge devices and cloud
+- **IoT Rules Engine**: Data routing and transformation to DynamoDB/S3
+- **IoT Analytics**: Device telemetry and anomaly detection
 
-### Monitoring Layer
-- **CloudWatch**: Logs, metrics, dashboards
-- **X-Ray**: Distributed tracing
-- **SNS**: Alerts and notifications
+### Monitoring & Observability
+- **CloudWatch**: Logs, metrics, dashboards, and alarms
+- **X-Ray**: Distributed tracing for end-to-end latency analysis
+- **SNS**: Real-time alerts and notifications
+- **Custom Metrics**: Processing latency, cancellation performance, error rates
 
-## Prerequisites
+## Directory Structure
 
-### Required Tools
-
-```bash
-# Terraform
-brew install terraform  # macOS
-# or
-sudo apt install terraform  # Linux
-
-# AWS CLI
-brew install awscli  # macOS
-# or
-pip install awscli
-
-# Python 3.11+
-python3 --version
+```
+cloud/
+├── terraform/                    # Terraform Infrastructure as Code
+│   ├── environments/
+│   │   ├── dev/                 # Development environment
+│   │   │   ├── main.tf          # Dev infrastructure
+│   │   │   └── variables.tf     # Dev-specific variables
+│   │   └── prod/                # Production environment
+│   │       ├── main.tf          # Production infrastructure
+│   │       └── variables.tf     # Production-specific variables
+│   ├── modules/                 # Reusable Terraform modules
+│   ├── archives/                # Legacy configurations
+│   ├── terraform.tfvars.example # Variable template
+│   └── README.md               # Detailed Terraform guide
+├── lambda/                       # Lambda function source code
+│   ├── common/                  # Shared utilities package
+│   │   ├── __init__.py
+│   │   ├── boto_config.py      # AWS client factory
+│   │   ├── redis_client.py     # Redis cache utilities
+│   │   ├── encoding.py         # Audio encoding/decoding
+│   │   └── metrics.py          # CloudWatch metrics publishing
+│   ├── anc_processor_v2/        # Main audio processing Lambda
+│   │   ├── handler.py          # Hybrid NLMS+RLS implementation
+│   │   └── requirements.txt
+│   ├── audio_receiver/          # Audio input validation Lambda
+│   │   ├── handler.py
+│   │   └── requirements.txt
+│   ├── audio_sender/            # WebSocket output Lambda
+│   │   ├── handler.py
+│   │   └── requirements.txt
+│   ├── websocket_connect/       # WebSocket connect handler
+│   │   ├── handler.py
+│   │   └── requirements.txt
+│   ├── websocket_disconnect/    # WebSocket disconnect handler
+│   │   ├── handler.py
+│   │   └── requirements.txt
+│   └── README.md               # Lambda deployment guide
+├── iot/                         # AWS IoT Core configuration
+│   ├── policies/
+│   ├── rules/
+│   └── README.md
+├── docker/                      # Docker/OCI configurations
+│   └── Dockerfile              # Multi-stage build
+├── deploy.sh                    # Automated deployment script
+├── AWS_ARCHITECTURE.md         # High-level architecture docs
+├── ARCHITECTURE_REFINEMENTS.md # Technical design decisions
+├── IMPLEMENTATION_SUMMARY.md   # Implementation details
+├── README_LAYER.md             # Lambda layer guide
+└── README.md                   # This file
 ```
 
-### AWS Account Setup
+## Quick Start
 
-1. **Create AWS Account** (if needed)
-   - Sign up at https://aws.amazon.com/
-   - Get $100 free credits for startups: https://aws.amazon.com/activate/
+### Prerequisites
+
+1. **Install Tools**
+   ```bash
+   # Terraform v1.0+
+   terraform version
+   
+   # AWS CLI v2
+   aws --version
+   
+   # Python 3.11+
+   python3 --version
+   
+   # Docker (for local testing)
+   docker --version
+   ```
 
 2. **Configure AWS Credentials**
    ```bash
    aws configure
-   # AWS Access Key ID: <your-access-key>
-   # AWS Secret Access Key: <your-secret-key>
-   # Default region: us-east-1
-   # Default output format: json
-   ```
-
-3. **Verify Credentials**
-   ```bash
+   # Enter Access Key ID, Secret Key, region (us-east-1), output format (json)
+   
+   # Verify access
    aws sts get-caller-identity
    ```
 
-## Deployment
-
-### Quick Start (Automated)
+### Deploy to Development
 
 ```bash
-# Clone repository
-cd cloud/
+# Navigate to dev environment
+cd terraform/environments/dev
 
-# Run automated deployment
-./deploy.sh
+# Create and edit configuration
+cp ../../../terraform.tfvars.example terraform.tfvars
+vi terraform.tfvars  # Update values for your environment
+
+# Initialize and deploy
+terraform init
+terraform validate
+terraform plan
+terraform apply
+
+# Show outputs (needed for application configuration)
+terraform output -json > config.json
 ```
 
-The script will:
-1. Check prerequisites
-2. Create Terraform backend (S3 + DynamoDB)
-3. Package Lambda functions
-4. Upload ML model to S3
-5. Initialize Terraform
-6. Deploy infrastructure
-7. Configure monitoring
-
-### Manual Deployment
-
-#### Step 1: Setup Terraform Backend
+### Deploy to Production
 
 ```bash
-# Create S3 bucket for state
-aws s3 mb s3://anc-platform-terraform-state-<account-id>
-aws s3api put-bucket-versioning \
-  --bucket anc-platform-terraform-state-<account-id> \
-  --versioning-configuration Status=Enabled
+# Same as dev, but use prod environment
+cd terraform/environments/prod
 
-# Create DynamoDB table for locking
-aws dynamodb create-table \
-  --table-name terraform-lock \
-  --attribute-definitions AttributeName=LockID,AttributeType=S \
-  --key-schema AttributeName=LockID,KeyType=HASH \
-  --billing-mode PAY_PER_REQUEST
+# Copy and customize configuration
+cp ../../../terraform.tfvars.example terraform.tfvars
+vi terraform.tfvars  # Use production-grade values
+
+# Review plan carefully before applying to production
+terraform init
+terraform plan -out=tfplan
+terraform apply tfplan
 ```
 
-#### Step 2: Package Lambda Functions
+## Lambda Function Deployment
+
+### Architecture
+
+Lambda functions share common utilities through the `lambda/common/` package:
+
+```python
+# Lambda handlers import shared utilities
+from common import get_redis_client, encode_audio, publish_metrics
+
+# No more duplicated code across handlers!
+```
+
+### Shared Utilities
+
+- **boto_config.py**: AWS client factory with timeout configuration
+- **redis_client.py**: Redis connection pooling and caching
+- **encoding.py**: Base64 audio encoding/decoding with validation
+- **metrics.py**: CloudWatch metrics publishing with batching
+
+### Packaging Lambda Functions
 
 ```bash
 cd lambda/
 
-# For each Lambda function
-for dir in */; do
-  cd "$dir"
-  pip install -r requirements.txt -t .
-  zip -r "../$(basename $dir).zip" .
-  cd ..
-done
+# Create deployment package for a function
+cd anc_processor_v2
+pip install -r requirements.txt -t .
+zip -r ../anc_processor_v2.zip . \
+  --exclude="tests/*" "__pycache__/*" "*.pyc"
+cd ..
+
+# Upload to S3 (Terraform will reference)
+aws s3 cp anc_processor_v2.zip s3://anc-lambda-code/
 ```
 
-#### Step 3: Configure Terraform
+### Environment Variables
+
+Lambda functions receive configuration via environment variables (set by Terraform):
+
+```
+# Redis
+REDIS_ENDPOINT=elasticache.domain.com
+REDIS_PORT=6379
+REDIS_PASSWORD=<from Secrets Manager>
+
+# DynamoDB
+SESSIONS_TABLE=anc-sessions
+CONNECTIONS_TABLE=anc-connections
+
+# SQS
+AUDIO_QUEUE_URL=https://sqs.us-east-1.amazonaws.com/.../audio-queue
+OUTPUT_QUEUE_URL=https://sqs.us-east-1.amazonaws.com/.../output-queue
+
+# S3
+RAW_AUDIO_BUCKET=anc-raw-audio-<env>
+PROCESSED_AUDIO_BUCKET=anc-processed-audio-<env>
+
+# SageMaker
+SAGEMAKER_ENDPOINT=anc-noise-classifier-<env>
+
+# Algorithms
+ALGORITHM=hybrid_nlms_rls
+FILTER_LENGTH=512
+SAMPLE_RATE=48000
+ENABLE_SPATIAL_AUDIO=true
+ENABLE_ADAPTIVE_LEARNING=true
+
+# Logging
+LOG_LEVEL=INFO
+ENVIRONMENT=dev|prod
+```
+
+### Cold Start Optimization
+
+Lambda handlers initialize AWS clients at module level (outside handler function):
+
+```python
+# Initialized once per Lambda container, reused across invocations
+redis_client = get_redis_client()
+cloudwatch = get_aws_clients(['cloudwatch'])
+
+def lambda_handler(event, context):
+    # Fast access to pre-initialized clients
+    metrics = publish_metrics({...}, redis_client=redis_client)
+```
+
+## Docker & Kubernetes
+
+### Docker
+
+The `Dockerfile` uses multi-stage builds for minimal image size:
+
+```dockerfile
+# Stage 1: Build - compile dependencies
+# Stage 2: Runtime - include only necessary files
+CMD ["gunicorn", "--worker-class", "gevent", "--workers", "4", ...]
+```
+
+Build and run locally:
 
 ```bash
-cd terraform/
+# Build image
+docker build -t anc-system:latest .
 
-# Create terraform.tfvars
-cat > terraform.tfvars <<EOF
-aws_region  = "us-east-1"
-environment = "production"
-db_password = "your-secure-password"
-alarm_email = "your-email@example.com"
-sagemaker_model_url = "s3://bucket/model.tar.gz"
-EOF
+# Run with docker-compose
+docker-compose up -d
 ```
 
-#### Step 4: Deploy
+### Kubernetes
+
+Deploy to Kubernetes cluster:
 
 ```bash
-# Initialize
-terraform init
+# Create namespace
+kubectl apply -f k8s/namespace.yaml
 
-# Plan
-terraform plan -out=tfplan
+# Create secrets from Terraform outputs
+kubectl create secret generic anc-secrets \
+  --from-literal=database_url=$RDS_ENDPOINT \
+  --from-literal=jwt_secret=$JWT_SECRET \
+  -n anc-platform
 
-# Apply
-terraform apply tfplan
+# Create ConfigMap from Terraform outputs
+kubectl create configmap anc-config \
+  --from-literal=redis_endpoint=$REDIS_ENDPOINT \
+  --from-literal=sessions_table=$SESSIONS_TABLE \
+  -n anc-platform
+
+# Deploy application
+kubectl apply -f k8s/
 ```
 
-## Cost Estimation
+Environment variables in K8s manifests reference ConfigMaps (non-sensitive) and Secrets (sensitive data).
 
-### Free Tier (First Year)
+## Terraform State Management
 
-Using AWS Free Tier, expected cost: **$0-$20/month**
+### S3 Backend Configuration
 
-- Lambda: 1M free requests/month
-- API Gateway: 1M free API calls/month
-- S3: 5GB free storage
-- RDS: 750 hours of db.t3.micro free
-- CloudWatch: 10 free custom metrics
+State is stored in S3 with encryption and DynamoDB locking:
 
-### Production (1000 concurrent users)
+```hcl
+backend "s3" {
+  bucket         = "anc-platform-terraform-state"
+  key            = "dev/terraform.tfstate"      # dev or prod
+  region         = "us-east-1"
+  encrypt        = true
+  dynamodb_table = "terraform-lock"
+}
+```
 
-Expected monthly cost: **~$485/month**
-
-| Service | Cost/Month |
-|---------|------------|
-| Lambda (10M invocations) | $50 |
-| API Gateway | $35 |
-| S3 (1TB storage + transfer) | $20 |
-| RDS (db.t3.medium, Multi-AZ) | $120 |
-| ElastiCache (3 nodes) | $80 |
-| SageMaker endpoint | $100 |
-| Data transfer | $50 |
-| CloudWatch | $30 |
-| **Total** | **$485** |
-
-### Cost Optimization Tips
-
-1. **Use Spot Instances**: 70% discount for batch processing
-2. **Enable Auto-Scaling**: Scale down during low usage
-3. **S3 Lifecycle Policies**: Auto-archive to Glacier
-4. **Reserved Capacity**: 40-60% discount for RDS (1-year commitment)
-5. **Lambda Power Tuning**: Optimize memory/cost ratio
-
-## Testing
-
-### Health Check
+### First-Time Setup
 
 ```bash
-# Get API URL from Terraform outputs
-API_URL=$(terraform output -raw api_gateway_rest_url)
+# Create state bucket
+aws s3api create-bucket \
+  --bucket anc-platform-terraform-state \
+  --region us-east-1
 
-# Test health endpoint
-curl ${API_URL}/health
+# Enable versioning and encryption
+aws s3api put-bucket-versioning \
+  --bucket anc-platform-terraform-state \
+  --versioning-configuration Status=Enabled
+
+# Create lock table
+aws dynamodb create-table \
+  --table-name terraform-lock \
+  --attribute-definitions AttributeName=LockID,AttributeType=S \
+  --key-schema AttributeName=LockID,KeyType=HASH \
+  --provisioned-throughput ReadCapacityUnits=1,WriteCapacityUnits=1
 ```
 
-### WebSocket Connection
+## Environment Comparison
 
-```javascript
-// Test WebSocket connection
-const ws = new WebSocket('wss://your-websocket-url');
+| Feature | Dev | Production |
+|---------|-----|------------|
+| **Availability** | Single-AZ | Multi-AZ |
+| **RDS Instance** | db.t3.micro | db.t3.large |
+| **RDS Storage** | 20GB | 200GB |
+| **RDS Multi-AZ** | No | Yes |
+| **Redis Node** | cache.t3.micro | cache.r6g.xlarge |
+| **Redis Nodes** | 1 | 3 |
+| **SageMaker Instance** | ml.t3.medium (1) | ml.m5.xlarge (2) |
+| **Spot Instances** | Enabled | Disabled |
+| **Auto-Scaling** | Disabled | Enabled |
+| **CloudFront** | Optional | Required |
+| **WAF** | Optional | Required |
 
-ws.onopen = () => {
-  console.log('Connected');
+## Outputs
 
-  // Start streaming
-  ws.send(JSON.stringify({
-    action: 'startStream',
-    config: {
-      sampleRate: 48000,
-      ancEnabled: true,
-      ancIntensity: 1.0
-    }
-  }));
-};
-
-ws.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  console.log('Received:', data.type);
-
-  if (data.type === 'processedChunk') {
-    // Play processed audio
-    const audioData = atob(data.audioData);
-    // ... decode and play
-  }
-};
-```
-
-### Load Testing
+After deployment, Terraform exposes these outputs for application configuration:
 
 ```bash
-# Install artillery
-npm install -g artillery
-
-# Run load test
-artillery run tests/load-test.yml
+terraform output -json
 ```
 
-## Monitoring
+Key outputs:
+- `api_gateway_rest_url`: REST API endpoint
+- `api_gateway_websocket_url`: WebSocket endpoint
+- `redis_endpoint`: ElastiCache endpoint
+- `rds_endpoint`: PostgreSQL endpoint
+- `sessions_table`: DynamoDB table name
+- `audio_queue_url`: SQS input queue
+- `output_queue_url`: SQS output queue
+
+## Monitoring & Observability
 
 ### CloudWatch Dashboards
 
-Access dashboards at:
-```
-https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#dashboards:
-```
+Custom dashboards aggregate metrics from:
+- Lambda execution metrics (duration, errors, throttles)
+- Audio processing metrics (cancellation dB, latency, samples)
+- Database performance (queries, connections, replication lag)
+- API Gateway (requests, latency, 4xx/5xx errors)
 
-**Key Metrics**:
-- WebSocket connections (active, new, closed)
-- Lambda invocations and errors
-- Processing latency (p50, p95, p99)
-- SageMaker endpoint requests
-- Cost metrics
+### Custom Metrics
+
+Published to CloudWatch namespaces:
+- `ANC/Processing`: NoiseReductionDB, ProcessingTimeMs, ErrorPower
+- `ANC/Performance`: Latency, Throughput
+- `ANC/Errors`: ErrorCount, ValidationErrors
+- `ANC/Lambda`: AudioChunksProcessed, AudioSampleReceived
 
 ### Alarms
 
-Pre-configured alarms will notify via SNS when:
-- Processing latency > 500ms (p95)
-- Error rate > 1%
-- SQS queue depth > 1000
-- Daily cost > $100
-
-### Logs
-
-```bash
-# View Lambda logs
-aws logs tail /aws/lambda/anc-processor --follow
-
-# Search logs
-aws logs filter-log-events \
-  --log-group-name /aws/lambda/anc-processor \
-  --filter-pattern "ERROR"
-```
-
-## ML Model
-
-### Training
-
-```bash
-# Train noise classification model
-cd ../ml/
-
-python train_model.py \
-  --data s3://bucket/datasets/ \
-  --output s3://bucket/models/
-
-# Deploy to SageMaker
-python deploy_model.py \
-  --model-url s3://bucket/models/model.tar.gz \
-  --instance-type ml.t3.medium
-```
-
-### Inference
-
-```python
-import boto3
-import json
-
-runtime = boto3.client('sagemaker-runtime')
-
-# Extract audio features
-features = extract_mfcc_features(audio_data)
-
-# Call SageMaker endpoint
-response = runtime.invoke_endpoint(
-    EndpointName='noise-classifier-endpoint',
-    Body=json.dumps({'instances': [features]}),
-    ContentType='application/json'
-)
-
-result = json.loads(response['Body'].read())
-noise_type = result['predictions'][0]['class']
-confidence = result['predictions'][0]['confidence']
-
-print(f"Detected: {noise_type} ({confidence:.2%})")
-```
+SNS topics alert on:
+- Lambda errors or throttling
+- Database failover or high latency
+- API Gateway errors
+- Redis evictions or connection issues
 
 ## Troubleshooting
 
-### Issue: Lambda Timeout
+### Lambda Cold Starts
 
-**Solution**: Increase memory allocation or timeout
-```bash
-aws lambda update-function-configuration \
-  --function-name anc-processor \
-  --timeout 30 \
-  --memory-size 1024
-```
+Reduce impact with:
+1. Provisioned concurrency (production)
+2. Lambda layers for shared code
+3. Right-sizing memory allocation
+4. Regular invocation (keep warm)
 
-### Issue: High Latency
-
-**Solutions**:
-1. Check ElastiCache hit rate - increase cache size if needed
-2. Enable Lambda SnapStart for faster cold starts
-3. Use provisioned concurrency for Lambda
-4. Optimize filter coefficient serialization
-
-### Issue: Cost Too High
-
-**Solutions**:
-1. Enable auto-scaling down during low usage
-2. Use Spot instances for batch processing
-3. Reduce SageMaker endpoint size or use serverless inference
-4. Implement S3 lifecycle policies
-
-### Issue: WebSocket Disconnections
-
-**Solutions**:
-1. Increase API Gateway timeout (max 29 minutes)
-2. Implement client-side reconnection logic
-3. Use heartbeat messages to keep connection alive
-4. Check Lambda concurrency limits
-
-## Security
-
-### Best Practices
-
-1. **Encryption**
-   - TLS 1.3 for data in transit
-   - AES-256 for S3 data at rest
-   - KMS for sensitive data
-
-2. **Authentication**
-   - JWT tokens for API access
-   - API keys for programmatic access
-   - IAM roles for service-to-service
-
-3. **Network Security**
-   - VPC with private subnets
-   - Security groups with least privilege
-   - AWS WAF for API Gateway
-
-4. **Compliance**
-   - Enable CloudTrail for audit logging
-   - Encrypt PII with field-level encryption
-   - GDPR: Implement data deletion policies
-
-## Disaster Recovery
-
-### Backup Strategy
-
-- **RDS**: Automated daily backups, 7-day retention
-- **DynamoDB**: Point-in-time recovery enabled
-- **S3**: Versioning enabled, cross-region replication (optional)
-
-### Recovery Procedures
+### Redis Connection Issues
 
 ```bash
-# Restore RDS from snapshot
-aws rds restore-db-instance-from-db-snapshot \
-  --db-instance-identifier anc-db-restored \
-  --db-snapshot-identifier rds:anc-db-2024-01-01
+# Test Redis connectivity
+aws elasticache describe-cache-clusters
 
-# Restore DynamoDB table
-aws dynamodb restore-table-from-backup \
-  --target-table-name anc-sessions-restored \
-  --backup-arn arn:aws:dynamodb:...
+# Check security groups
+aws ec2 describe-security-groups \
+  --filters Name=group-name,Values=anc-elasticache-sg
+
+# View logs
+kubectl logs -n anc-platform -l app=anc-api | grep redis
 ```
 
-## Cleanup
-
-### Destroy Infrastructure
+### Database Performance
 
 ```bash
-cd terraform/
-
-# Destroy all resources
-terraform destroy
-
-# Confirm destruction
-# Type: yes
+# Check RDS metrics
+aws cloudwatch get-metric-statistics \
+  --namespace AWS/RDS \
+  --metric-name DatabaseConnections \
+  --dimensions Name=DBInstanceIdentifier,Value=anc-db-prod \
+  --start-time 2024-01-01T00:00:00Z \
+  --end-time 2024-01-02T00:00:00Z \
+  --period 300 \
+  --statistics Average
 ```
 
-**Warning**: This will delete:
-- All Lambda functions
-- DynamoDB tables (and data)
-- RDS databases (and data)
-- S3 buckets (and data)
-- CloudWatch logs
+## Cost Optimization
 
-### Manual Cleanup
+1. **Development**: Use spot instances, smaller instance sizes, single-AZ
+2. **Production**: Reserve instances, appropriate sizing, multi-AZ for HA
+3. **S3 Lifecycle**: Archive old audio to Glacier after 90 days
+4. **Lambda**: Monitor memory usage, adjust allocation
+5. **RDS**: Use read replicas for analytics queries
+6. **CloudFront**: Cache API responses where appropriate
 
-```bash
-# Empty S3 buckets first
-aws s3 rm s3://anc-platform-audio-raw --recursive
-aws s3 rm s3://anc-platform-audio-processed --recursive
+## Security Best Practices
 
-# Then run terraform destroy
-terraform destroy
-```
+1. **Secrets Management**: Use AWS Secrets Manager for passwords
+2. **IAM Roles**: Least privilege access for Lambda, EC2, RDS
+3. **VPC**: Private subnets for databases, Lambda in VPC
+4. **Encryption**: Enable RDS encryption, S3 bucket encryption
+5. **Monitoring**: CloudTrail for API auditing, VPC Flow Logs
+6. **WAF**: Rate limiting and SQL injection protection
+
+## Related Documentation
+
+- [Terraform Guide](./terraform/README.md)
+- [Lambda Deployment](./lambda/README.md)
+- [AWS Architecture](./AWS_ARCHITECTURE.md)
+- [Architecture Refinements](./ARCHITECTURE_REFINEMENTS.md)
+- [Implementation Summary](./IMPLEMENTATION_SUMMARY.md)
+- [Docker/Kubernetes Guide](../docs/deployment/)
 
 ## Support
 
-- **Documentation**: [AWS_ARCHITECTURE.md](AWS_ARCHITECTURE.md)
-- **Issues**: Create GitHub issue
-- **Email**: support@anc-platform.com
-
-## License
-
-Copyright (c) 2024 ANC Platform. All rights reserved.
+For issues or questions:
+1. Check CloudWatch logs: `aws logs tail /aws/lambda/<function-name> --follow`
+2. Review CloudWatch metrics: AWS Console → CloudWatch → Dashboards
+3. Check AWS service health: https://status.aws.amazon.com/
+4. Consult detailed architecture docs in `/docs` directory

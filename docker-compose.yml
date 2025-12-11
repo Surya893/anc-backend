@@ -9,9 +9,12 @@ services:
       - "5000:5000"
     environment:
       - FLASK_ENV=development
-      - DATABASE_PATH=/data/anc_system.db
+      - FLASK_APP=wsgi:app
       - LOG_LEVEL=DEBUG
-      - API_KEYS=dev-api-key
+      - REDIS_ENDPOINT=redis
+      - REDIS_PORT=6379
+      - DATABASE_URL=postgresql://user:password@db:5432/anc_platform
+      - JWT_SECRET=dev-secret-change-in-production
     volumes:
       - ./data:/data
       - ./models:/models

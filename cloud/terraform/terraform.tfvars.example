@@ -1,0 +1,46 @@
+# Terraform Variables for ANC Platform
+# Copy this file to terraform.tfvars and update values for your environment
+# DO NOT commit terraform.tfvars with secrets to version control
+
+# General Configuration
+aws_region = "us-east-1"
+environment = "dev"  # dev, staging, or production
+
+# VPC Configuration
+vpc_cidr           = "10.0.0.0/16"
+availability_zones = ["us-east-1a", "us-east-1b", "us-east-1c"]
+
+# RDS Configuration (PostgreSQL)
+rds_instance_class      = "db.t3.medium"
+rds_allocated_storage   = 100
+rds_multi_az            = false
+db_name                 = "anc_platform"
+db_username             = "anc_admin"
+db_password             = "CHANGE-ME-IN-PRODUCTION"  # Use Secrets Manager in prod
+
+# ElastiCache Configuration (Redis)
+elasticache_node_type = "cache.t3.medium"
+elasticache_num_nodes = 1  # Increase to 3+ for production
+
+# SageMaker Configuration
+sagemaker_model_url      = "s3://anc-models/noise-classifier/model.tar.gz"
+sagemaker_instance_type  = "ml.t3.medium"
+sagemaker_initial_instances = 1
+
+# Domain Configuration
+domain_name          = "api.anc-platform.com"
+acm_certificate_arn  = "arn:aws:acm:us-east-1:123456789:certificate/..."
+
+# Monitoring
+alarm_email = "alerts@example.com"
+
+# Feature Flags
+enable_spot_instances  = false  # true for dev/staging, false for production
+enable_auto_scaling    = true
+waf_rate_limit         = 2000
+
+# CORS Configuration
+allowed_origins = [
+  "http://localhost:3000",
+  "https://app.anc-platform.com"
+]
