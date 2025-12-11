@@ -1,0 +1,45 @@
+[run]
+branch = True
+source = backend, src
+omit =
+    */site-packages/*
+    */distutils/*
+    .venv/*
+    venv/*
+    */__pycache__/*
+    */tests/*
+    setup.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise AssertionError
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    @abstractmethod
+    @abc.abstractmethod
+    except ImportError:
+    except ModuleNotFoundError:
+    if sys.version_info:
+    @overload
+
+precision = 2
+skip_covered = False
+skip_empty = True
+show_missing = True
+sort = Cover
+
+[html]
+directory = htmlcov
+
+[xml]
+output = coverage.xml
+
+[paths]
+source =
+    backend/
+    src/
+    */site-packages/backend/
+    */site-packages/src/

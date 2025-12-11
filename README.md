@@ -293,22 +293,47 @@ See [API Documentation](docs/api/openapi.yaml) for complete reference.
 
 ## 🧪 Testing
 
+The test suite includes unit tests, integration tests, and demos with comprehensive coverage of Flask blueprints, Celery tasks, and ML services.
+
+### Quick Test Commands
+
 ```bash
 # Run all tests
 pytest
 
-# Run unit tests only
+# Run unit tests only (fast)
 pytest tests/unit/ -v
+
+# Run Flask API blueprint tests
+pytest tests/unit/test_flask_blueprints.py -v
+
+# Run Celery task tests
+pytest tests/unit/test_celery_tasks.py -v
 
 # Run integration tests
 pytest tests/integration/ -v
 
-# Run with coverage
-pytest --cov=src --cov=backend --cov-report=html
+# Run with coverage report
+pytest --cov=backend --cov=src --cov-report=html
 
-# Run specific test
-pytest tests/unit/test_emergency_detection.py -v
+# Run specific test marker
+pytest -m flask       # Flask tests only
+pytest -m celery      # Celery tests only
+pytest -m auth        # Auth tests only
+pytest -m "not slow"  # Skip slow tests
 ```
+
+### Test Fixtures
+
+The test suite provides comprehensive fixtures in `tests/conftest.py`:
+
+- **Flask**: `flask_app`, `client`, `app_context` - For testing REST/WebSocket APIs
+- **Services**: `mock_anc_service`, `mock_ml_service` - For mocking dependencies
+- **Audio**: `sample_audio_data`, `sample_audio_raw`, `emergency_audio_data` - Synthetic test data
+- **Celery**: `mock_celery_task`, `celery_config` - For task testing with eager mode
+- **Database**: `mock_database`, `mock_session_model` - For DB interaction tests
+
+For detailed testing documentation, see [tests/README.md](tests/README.md).
 
 ---
 
