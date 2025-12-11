@@ -16,13 +16,27 @@ import sys
 from pathlib import Path
 import time
 
+# Ensure src is in path for imports
+import sys
+src_path = Path(__file__).parent.parent
+if str(src_path) not in sys.path:
+    sys.path.insert(0, str(src_path))
+
 # Import configurations and models
 from config import get_config
 from models import db, User, AudioSession, NoiseDetection, ProcessingMetric, APIRequest
 from websocket_server import socketio, init_background_tasks
 from websocket_streaming import register_streaming_handlers
 from audio_processor import audio_processor
-from tasks import celery_app
+from celery_app import celery_app
+from api.tasks import (  # Import all tasks to register them with Celery
+    process_audio_file,
+    batch_process_files,
+    train_noise_classifier,
+    analyze_session_data,
+    generate_daily_report,
+    cleanup_old_sessions
+)
 
 # Configure logging
 def setup_logging(app):
